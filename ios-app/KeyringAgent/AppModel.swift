@@ -112,40 +112,54 @@ final class AppModel: ObservableObject {
             error = "NFC is not available. Use a physical iPhone with NFC enabled."
             return
         }
+        guard action == "approve" || action == "reject" else { return }
+        guard let context else {
+            error = "Account details are not loaded yet. Pull to refresh."
+            return
+        }
         do {
             status = "Preparing \(action)…"
-            let prepared = try await api.prepare(action: action, id: spend.id)
+            let routing = try await api.prepare(action: action, id: spend.id)
 
-            // The server must return the same intent the human is looking at.
-            guard prepared.pending.id == spend.id,
-                  prepared.pending.receiverId == spend.receiverId,
-                  prepared.pending.amountYocto == spend.amountYocto else {
-                throw NSError(
-                    domain: "KeyringAgent",
-                    code: 1,
-                    userInfo: [NSLocalizedDescriptionKey: "The server returned a different request. Aborted."]
-                )
+            // Routing data must agree with what the human is looking at and with the account.
+            guard routing.pending.id == spend.id,
+                  routing.pending.receiverId == spend.receiverId,
+                  routing.pending.amountYocto == spend.amountYocto,
+                  routing.publicKey == context.approverKey,
+                  routing.signerId == AppConfig.account,
+                  routing.receiverId == AppConfig.account,
+                  let nonce = UInt64(routing.nonce)
+            else {
+                throw Self.failure("The server returned data that does not match this request. Nothing was signed.")
             }
 
-            guard let hash = Data(hex: prepared.hashHex), hash.count == 32 else {
-                throw NSError(
-                    domain: "KeyringAgent",
-                    code: 2,
-                    userInfo: [NSLocalizedDescriptionKey: "The server returned an invalid transaction hash."]
-                )
+            // The app builds the transaction itself. The server supplied only the nonce and block hash.
+            let tx = NearFunctionCallTx(
+                signerId: AppConfig.account,
+                publicKeyHex: context.approverKeyHex,
+                nonce: nonce,
+                receiverId: AppConfig.account,
+                blockHashHex: routing.blockHashHex,
+                methodName: action,
+                argsJSON: try NearFunctionCallTx.args(forId: spend.id),
+                gasTGas: 30
+            )
+            let unsigned = try tx.unsignedBytes()
+            let digest = try tx.digest()
+            guard let expectedKey = Data(hex: context.approverKeyHex), expectedKey.count == 64 else {
+                throw Self.failure("The approver key is malformed. Nothing was signed.")
             }
 
-            let expected = context.flatMap { Data(hex: $0.approverKeyHex) }
             status = "Hold your card near the iPhone…"
             let signature = try await CardSigner.shared.sign(
-                digest: [UInt8](hash),
+                digest: [UInt8](digest),
                 pin: pin,
-                expectedPublicKey: expected.map { [UInt8]($0) }
+                expectedPublicKey: [UInt8](expectedKey)
             )
 
             status = "Broadcasting…"
             let result = try await api.submit(
-                txId: prepared.txId,
+                unsignedTxBase64: unsigned.base64EncodedString(),
                 signatureHex: Data(signature.signature).hex
             )
             lastTx = result
@@ -155,5 +169,9 @@ final class AppModel: ObservableObject {
             self.error = error.localizedDescription
             status = nil
         }
+    }
+
+    private static func failure(_ message: String) -> NSError {
+        NSError(domain: "KeyringAgent", code: 1, userInfo: [NSLocalizedDescriptionKey: message])
     }
 }

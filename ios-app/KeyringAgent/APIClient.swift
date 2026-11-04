@@ -56,17 +56,17 @@ struct APIClient {
         return response.pending
     }
 
-    /// The API builds the unsigned approve/reject transaction and returns its hash.
-    /// The app signs that hash with the card; the API never sees the key or the PIN.
+    /// Routing data (nonce, block hash, key). The app builds and hashes the transaction itself.
     func prepare(action: String, id: String) async throws -> PrepareResponse {
-        try await request(path: "/api/tx/\(action)/\(id)", method: "POST", body: [:])
+        try await request(path: "/api/tx/prepare/\(action)/\(id)", method: "POST", body: [:])
     }
 
-    func submit(txId: String, signatureHex: String) async throws -> SubmitResponse {
+    /// Relays the app's unsigned bytes and the card's signature. The server cannot change them.
+    func submit(unsignedTxBase64: String, signatureHex: String) async throws -> SubmitResponse {
         try await request(
             path: "/api/tx/submit",
             method: "POST",
-            body: ["txId": txId, "signatureHex": signatureHex]
+            body: ["unsignedTxBase64": unsignedTxBase64, "signatureHex": signatureHex]
         )
     }
 

@@ -1,8 +1,9 @@
 // Keyring agent API — the message bus between the agent and the iOS app.
 //
-// It is read-only with respect to the chain: it reads the policy contract, builds the
-// *unsigned* approve/reject transaction, and broadcasts the signed transaction the app
-// returns. It never sees the card key or the PIN.
+// It is a router. It reads the policy contract and hands the iOS app the nonce, block hash,
+// and approver key. The app builds and signs the approve/reject transaction itself; the API
+// checks the card's signature over those exact bytes and broadcasts. It never builds the
+// transaction, never sees the card key or the PIN, and cannot change what was signed.
 //
 //   node api/server.mjs
 //   API_PORT=8787 API_HOST=0.0.0.0 API_TOKEN=dev-token node api/server.mjs
@@ -11,14 +12,7 @@
 // verifies the id on-chain before it broadcasts anything to clients.
 
 import http from 'node:http';
-import { randomUUID, createHash } from 'node:crypto';
-import {
-  actionCreators,
-  createTransaction,
-  encodeTransaction,
-  Signature,
-  SignedTransaction,
-} from '@near-js/transactions';
+import { createHash } from 'node:crypto';
 import { PublicKey } from '@near-js/crypto';
 import { baseDecode } from '@near-js/utils';
 import { secp256k1 } from '@noble/curves/secp256k1';
@@ -27,11 +21,6 @@ import { ACCOUNT, RPC, rpc, view } from '../scripts/near.mjs';
 const PORT = Number(process.env.API_PORT ?? 8787);
 const HOST = process.env.API_HOST ?? '0.0.0.0';
 const TOKEN = process.env.API_TOKEN ?? '';
-const TGAS = 10n ** 12n;
-const TX_TTL_MS = 5 * 60 * 1000;
-
-/** txId -> { tx, hash, action, id, expiresAt } */
-const prepared = new Map();
 /** pending ids already announced to SSE clients */
 const announced = new Set();
 /** SSE clients: { res, timer } */
@@ -186,61 +175,43 @@ async function prepareTx(action, id) {
   if (!item) throw httpError(404, `pending spend ${id} not found`);
 
   const keys = await cachedView('get_keys', 60_000);
-  const publicKey = PublicKey.fromString(keys.approver_key);
   const ak = await rpc('query', {
     request_type: 'view_access_key',
     finality: 'final',
     account_id: ACCOUNT,
-    public_key: publicKey.toString(),
+    public_key: keys.approver_key,
   });
 
-  const tx = createTransaction(
-    ACCOUNT,
-    publicKey,
-    ACCOUNT,
-    BigInt(ak.nonce) + 1n,
-    [actionCreators.functionCall(action, { id: String(id) }, 30n * TGAS, 0n)],
-    baseDecode(ak.block_hash),
-  );
-  const hash = createHash('sha256').update(encodeTransaction(tx)).digest();
-  const txId = randomUUID();
-  prepared.set(txId, {
-    tx,
-    hash,
-    action,
-    id: String(id),
-    expiresAt: Date.now() + TX_TTL_MS,
-  });
-
+  // Routing data only. The app builds and signs the transaction itself from these fields.
   return {
-    txId,
-    hashHex: hash.toString('hex'),
     action,
     id: String(id),
     pending: item,
-    expiresAt: Date.now() + TX_TTL_MS,
-    // The app only needs the hash to sign. It should show `pending` as the intent.
-    signer: keys.approver_key,
+    signerId: ACCOUNT,
+    receiverId: ACCOUNT,
+    publicKey: keys.approver_key,
+    nonce: (BigInt(ak.nonce) + 1n).toString(),
+    blockHashHex: Buffer.from(baseDecode(ak.block_hash)).toString('hex'),
   };
 }
 
-async function submitTx(txId, signatureHex) {
-  const entry = prepared.get(txId);
-  if (!entry) throw httpError(410, 'prepared transaction not found or already used');
-  if (Date.now() > entry.expiresAt) {
-    prepared.delete(txId);
-    throw httpError(410, 'prepared transaction expired');
-  }
-
+// Routing only. The app sends the unsigned bytes it built plus the card's 64-byte signature.
+// The API checks that the signature recovers the approver key over those exact bytes, appends
+// the recovery byte, and broadcasts. It cannot change what was signed.
+async function submitTx(unsignedTxBase64, signatureHex) {
+  const txBytes = Buffer.from(String(unsignedTxBase64 ?? ''), 'base64');
+  if (txBytes.length === 0) throw httpError(400, 'unsignedTxBase64 is required');
   const sig = Buffer.from(String(signatureHex ?? ''), 'hex');
   if (sig.length !== 64) throw httpError(400, 'signature must be 64 bytes (r‖s)');
 
-  const pub = Buffer.from(entry.tx.publicKey.data);
+  const hash = createHash('sha256').update(txBytes).digest();
+  const keys = await cachedView('get_keys', 60_000);
+  const pub = Buffer.from(PublicKey.fromString(keys.approver_key).data);
   let v = null;
   for (let candidate = 0; candidate < 2; candidate++) {
     const recovered = secp256k1.Signature.fromCompact(sig)
       .addRecoveryBit(candidate)
-      .recoverPublicKey(entry.hash)
+      .recoverPublicKey(hash)
       .toRawBytes(false)
       .subarray(1);
     if (Buffer.from(recovered).equals(pub)) {
@@ -248,17 +219,11 @@ async function submitTx(txId, signatureHex) {
       break;
     }
   }
-  if (v === null) throw httpError(400, 'signature does not recover the approver key');
+  if (v === null) throw httpError(400, 'signature does not match the approver key for these bytes');
 
-  const signed = new SignedTransaction({
-    transaction: entry.tx,
-    signature: new Signature({ keyType: 1, data: Buffer.concat([sig, Buffer.from([v])]) }),
-  });
-
-  const result = await rpc('broadcast_tx_commit', [
-    Buffer.from(signed.encode()).toString('base64'),
-  ]);
-  prepared.delete(txId);
+  // SignedTransaction = transaction bytes ‖ key type (1 = secp256k1) ‖ r‖s‖v
+  const signed = Buffer.concat([txBytes, Buffer.from([1]), sig, Buffer.from([v])]);
+  const result = await rpc('broadcast_tx_commit', [signed.toString('base64')]);
   cache.clear();
 
   const failure =
@@ -340,20 +305,20 @@ async function route(req, res, url) {
     return sendJson(res, 200, { ok: true, pending: item });
   }
 
-  // Prepare an unsigned approve/reject transaction; the app signs the returned hash.
-  if (req.method === 'POST' && url.pathname.startsWith('/api/tx/')) {
-    const parts = url.pathname.split('/').filter(Boolean); // api, tx, ...
-    if (parts[2] === 'submit') {
-      const body = await readBody(req);
-      if (!body.txId || !body.signatureHex) {
-        return sendJson(res, 400, { error: 'txId and signatureHex are required' });
-      }
-      return sendJson(res, 200, await submitTx(body.txId, body.signatureHex));
-    }
-    const action = parts[2];
-    const id = parts[3];
+  // Routing: nonce, block hash, and approver key. The app builds and signs the transaction.
+  if (req.method === 'POST' && url.pathname.startsWith('/api/tx/prepare/')) {
+    const [action, id] = url.pathname.slice('/api/tx/prepare/'.length).split('/');
     if (!action || id === undefined) return sendJson(res, 404, { error: 'not found' });
     return sendJson(res, 200, await prepareTx(action, id));
+  }
+
+  // Routing: relays the app's signed transaction to the network.
+  if (req.method === 'POST' && url.pathname === '/api/tx/submit') {
+    const body = await readBody(req);
+    if (!body.unsignedTxBase64 || !body.signatureHex) {
+      return sendJson(res, 400, { error: 'unsignedTxBase64 and signatureHex are required' });
+    }
+    return sendJson(res, 200, await submitTx(body.unsignedTxBase64, body.signatureHex));
   }
 
   return sendJson(res, 404, { error: 'not found' });

@@ -43,14 +43,16 @@ struct PendingSpend: Codable, Identifiable, Hashable {
     var isHighRisk: Bool { reason == "NotAllowlisted" }
 }
 
+/// Routing data only: the app builds the transaction from these fields itself.
 struct PrepareResponse: Codable {
-    let txId: String
-    let hashHex: String
     let action: String
     let id: String
     let pending: PendingSpend
-    let expiresAt: UInt64
-    let signer: String
+    let signerId: String
+    let receiverId: String
+    let publicKey: String      // "secp256k1:<base58>", must equal the account's approver key
+    let nonce: String          // the next nonce for the approver key, as a decimal string
+    let blockHashHex: String   // recent block hash, 32 bytes as hex
 }
 
 struct SubmitResponse: Codable {

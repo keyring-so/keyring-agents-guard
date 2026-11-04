@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 60;
+	objectVersion = 54;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -12,6 +12,7 @@
 		2D27CB6D42BECFACFEDDEACC /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D346F7BF7B6089D491B9C5F /* SettingsView.swift */; };
 		4DE144DF379FBE86B5E9DB4E /* Data+Hex.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8C44CA16BC37B0C5D618546 /* Data+Hex.swift */; };
 		5367BF39F4FDA4C15948F928 /* KeyringAgentApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00A60408344FD9A58AA28D62 /* KeyringAgentApp.swift */; };
+		639540F313B6C5F6E5FB6E4C /* NearTx.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6C86AFDAF7412756294AD7B /* NearTx.swift */; };
 		8E067494223A4D0EA74A6A7C /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE19020DA9BA56BD1E4048E7 /* AppModel.swift */; };
 		A6EA1235206DA6650A89E647 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 0C3785FA8F06EF729D5D1C2A /* Assets.xcassets */; };
 		B4B24BEAE2CBC240F2EFDF89 /* Components.swift in Sources */ = {isa = PBXBuildFile; fileRef = D58857A5B091DE9D6C347A76 /* Components.swift */; };
@@ -37,7 +38,8 @@
 		C858625A31EC8DBF4F481599 /* client-swift */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "client-swift"; path = "../../near-hackthon-applets/client-swift"; sourceTree = SOURCE_ROOT; };
 		CE113A673BAAAB13B1E42CF4 /* PendingListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PendingListView.swift; sourceTree = "<group>"; };
 		D58857A5B091DE9D6C347A76 /* Components.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components.swift; sourceTree = "<group>"; };
-		ECDE14C4DE3C82520CEDA14E /* KeyringAgent.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = KeyringAgent.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		ECDE14C4DE3C82520CEDA14E /* KeyringAgent.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = KeyringAgent.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		F6C86AFDAF7412756294AD7B /* NearTx.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NearTx.swift; sourceTree = "<group>"; };
 		F8C44CA16BC37B0C5D618546 /* Data+Hex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Data+Hex.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -100,6 +102,7 @@
 				F8C44CA16BC37B0C5D618546 /* Data+Hex.swift */,
 				00A60408344FD9A58AA28D62 /* KeyringAgentApp.swift */,
 				AC2145DD2CC0454B315841B3 /* Models.swift */,
+				F6C86AFDAF7412756294AD7B /* NearTx.swift */,
 				4E6BB654DA62E2574BB89833 /* NFCCardTransport.swift */,
 				5BBD0649625A3B328D47C64D /* Views */,
 			);
@@ -139,6 +142,7 @@
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					0E3E40A60D7873DB8580A185 = {
+						DevelopmentTeam = "";
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -189,6 +193,7 @@
 				5367BF39F4FDA4C15948F928 /* KeyringAgentApp.swift in Sources */,
 				CCE545DB8618A9242E6ED0EC /* Models.swift in Sources */,
 				C46D7738651B9D1D6BB02CE9 /* NFCCardTransport.swift in Sources */,
+				639540F313B6C5F6E5FB6E4C /* NearTx.swift in Sources */,
 				FEB880A782FF469B2064B478 /* PendingListView.swift in Sources */,
 				2D27CB6D42BECFACFEDDEACC /* SettingsView.swift in Sources */,
 			);
@@ -261,7 +266,7 @@
 				CODE_SIGN_ENTITLEMENTS = KeyringAgent/KeyringAgent.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = VWU226A3V6;
+				DEVELOPMENT_TEAM = "";
 				INFOPLIST_FILE = KeyringAgent/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -285,7 +290,7 @@
 				CODE_SIGN_ENTITLEMENTS = KeyringAgent/KeyringAgent.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = VWU226A3V6;
+				DEVELOPMENT_TEAM = "";
 				INFOPLIST_FILE = KeyringAgent/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (

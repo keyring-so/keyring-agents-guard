@@ -26,6 +26,13 @@ struct ApprovalView: View {
                     .foregroundStyle(.secondary)
             }
 
+            Section("Card will sign") {
+                InfoRow(label: "Contract", value: AppConfig.account)
+                InfoRow(label: "Call", value: "approve or reject (\(spend.id))")
+                InfoRow(label: "Deposit", value: "0 NEAR")
+                InfoRow(label: "Gas", value: "30 TGas")
+            }
+
             if !spend.memo.isEmpty {
                 Section("Agent-provided memo — untrusted") {
                     Text(spend.memo)
