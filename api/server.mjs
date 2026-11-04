@@ -61,8 +61,29 @@ function normalizePending(p) {
   };
 }
 
-async function pendingList() {
-  const list = await view('get_pending');
+// Chain reads share a short cache, so many clients and polls cost one RPC call per TTL.
+const cache = new Map();
+let rpcCalls = 0;
+
+function cachedView(method, ttlMs, args = {}) {
+  const hit = cache.get(method);
+  if (hit && Date.now() - hit.at < ttlMs) return hit.promise;
+  rpcCalls += 1;
+  const entry = { at: Date.now(), promise: view(method, args) };
+  cache.set(method, entry);
+  entry.promise.catch(() => {
+    if (cache.get(method) === entry) cache.delete(method);
+  });
+  return entry.promise;
+}
+
+function freshView(method, args = {}) {
+  rpcCalls += 1;
+  return view(method, args);
+}
+
+async function pendingList({ fresh = false } = {}) {
+  const list = fresh ? await freshView('get_pending') : await cachedView('get_pending', 3000);
   return Array.isArray(list) ? list.map(normalizePending) : [];
 }
 
@@ -120,7 +141,6 @@ function broadcast(event, data) {
     try {
       client.res.write(frame);
     } catch {
-      clearInterval(client.timer);
       clients.delete(client);
     }
   }
@@ -131,9 +151,9 @@ function broadcast(event, data) {
 
 async function context() {
   const [policy, budget, keys, pending] = await Promise.all([
-    view('get_policy'),
-    view('get_budget'),
-    view('get_keys'),
+    cachedView('get_policy', 60_000),
+    cachedView('get_budget', 3000),
+    cachedView('get_keys', 60_000),
     pendingList(),
   ]);
   const approver = PublicKey.fromString(keys.approver_key);
@@ -160,11 +180,12 @@ async function prepareTx(action, id) {
   if (action !== 'approve' && action !== 'reject') {
     throw httpError(400, 'action must be approve or reject');
   }
-  const pending = await pendingList();
+  // Read fresh: the human is about to sign this exact request.
+  const pending = await pendingList({ fresh: true });
   const item = pending.find((p) => p.id === String(id));
   if (!item) throw httpError(404, `pending spend ${id} not found`);
 
-  const keys = await view('get_keys');
+  const keys = await cachedView('get_keys', 60_000);
   const publicKey = PublicKey.fromString(keys.approver_key);
   const ak = await rpc('query', {
     request_type: 'view_access_key',
@@ -238,6 +259,7 @@ async function submitTx(txId, signatureHex) {
     Buffer.from(signed.encode()).toString('base64'),
   ]);
   prepared.delete(txId);
+  cache.clear();
 
   const failure =
     result.status?.Failure ??
@@ -270,7 +292,7 @@ async function route(req, res, url) {
   }
 
   if (url.pathname === '/health') {
-    return sendJson(res, 200, { ok: true, account: ACCOUNT, rpc: RPC });
+    return sendJson(res, 200, { ok: true, account: ACCOUNT, rpc: RPC, rpcCalls });
   }
 
   if (!authorized(req, url)) {
@@ -301,27 +323,9 @@ async function route(req, res, url) {
       'access-control-allow-origin': '*',
     });
     res.write(`event: snapshot\ndata: ${JSON.stringify(await pendingList())}\n\n`);
-    const client = {
-      res,
-      timer: setInterval(async () => {
-        try {
-          const list = await pendingList();
-          for (const item of list) {
-            if (!announced.has(item.id)) {
-              announced.add(item.id);
-              broadcast('pending', item);
-            }
-          }
-        } catch {
-          // Keep the stream alive; the client will retry.
-        }
-      }, 2000),
-    };
+    const client = { res };
     clients.add(client);
-    req.on('close', () => {
-      clearInterval(client.timer);
-      clients.delete(client);
-    });
+    req.on('close', () => clients.delete(client));
     return;
   }
 
@@ -329,7 +333,7 @@ async function route(req, res, url) {
   if (req.method === 'POST' && url.pathname === '/api/agent/notify') {
     const body = await readBody(req);
     if (body.id === undefined) return sendJson(res, 400, { error: 'id is required' });
-    const item = (await pendingList()).find((p) => p.id === String(body.id));
+    const item = (await pendingList({ fresh: true })).find((p) => p.id === String(body.id));
     if (!item) return sendJson(res, 404, { error: `pending spend ${body.id} not found` });
     announced.add(item.id);
     broadcast('pending', item);
@@ -356,6 +360,21 @@ async function route(req, res, url) {
 }
 
 // ---------------------------------------------------------------------------------------------
+// One poller for every connected client: at most one chain read per tick, none while idle.
+setInterval(async () => {
+  if (clients.size === 0) return;
+  try {
+    for (const item of await pendingList()) {
+      if (!announced.has(item.id)) {
+        announced.add(item.id);
+        broadcast('pending', item);
+      }
+    }
+  } catch {
+    // Keep serving; the next tick retries.
+  }
+}, 5000);
+
 // Boot
 
 const server = http.createServer((req, res) => {

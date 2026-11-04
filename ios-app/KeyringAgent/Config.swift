@@ -1,8 +1,7 @@
 import Foundation
 
 enum AppConfig {
-    /// Simulator: 127.0.0.1. A physical iPhone must use the Mac's LAN address,
-    /// for example http://192.168.1.20:8787 (the API binds 0.0.0.0 by default).
+    /// Default API server. Changed at runtime in Settings → API server.
     static let apiBaseURL = URL(string: "http://127.0.0.1:8787")!
 
     /// Set this when the API server is started with API_TOKEN.

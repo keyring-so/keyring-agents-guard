@@ -25,6 +25,18 @@ struct APIClient {
     let token: String
     private let session: URLSession
 
+    /// Accepts "http(s)://host[:port]" with an optional trailing slash; anything else is rejected.
+    static func normalize(_ raw: String) -> URL? {
+        var text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        while text.hasSuffix("/") { text.removeLast() }
+        guard let url = URL(string: text),
+              let scheme = url.scheme?.lowercased(),
+              scheme == "http" || scheme == "https",
+              url.host?.isEmpty == false
+        else { return nil }
+        return url
+    }
+
     init(baseURL: URL = AppConfig.apiBaseURL, token: String = AppConfig.apiToken) {
         self.baseURL = baseURL
         self.token = token

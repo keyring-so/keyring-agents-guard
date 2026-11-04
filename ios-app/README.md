@@ -20,7 +20,7 @@ open KeyringAgent.xcodeproj
 
 1. Set your development team in **Signing & Capabilities**.
 2. Set the bundle identifier if needed (default `so.keyring.agent`).
-3. In `KeyringAgent/Config.swift`, set `AppConfig.apiBaseURL` to your Mac's LAN address, e.g. `http://192.168.1.20:8787`.
+3. In the app, open **Settings** → **API server**, enter your Mac's LAN address (e.g. `http://192.168.1.20:8787`), and tap **Save and connect**. The default (`http://127.0.0.1:8787`) is used in the Simulator; **Reset to default** restores it.
 4. Run the API from the repo root: `node api/server.mjs`.
 5. Run on the iPhone. Tap a pending request, enter the 6-digit card PIN, then hold the card near the top of the iPhone.
 

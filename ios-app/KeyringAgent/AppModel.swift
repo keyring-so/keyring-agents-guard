@@ -10,8 +10,32 @@ final class AppModel: ObservableObject {
     @Published var lastTx: SubmitResponse?
     @Published var loading = false
 
-    private let api = APIClient()
+    @Published private(set) var apiBaseURL: URL
+    private var api: APIClient
     private var pollTask: Task<Void, Never>?
+
+    private static let baseURLKey = "apiBaseURL"
+
+    init() {
+        let stored = UserDefaults.standard.string(forKey: Self.baseURLKey).flatMap(APIClient.normalize)
+        let url = stored ?? AppConfig.apiBaseURL
+        apiBaseURL = url
+        api = APIClient(baseURL: url)
+    }
+
+    /// Validates, persists, and reconnects. Returns true when the server answers.
+    func saveAPIBaseURL(_ raw: String) async -> Bool {
+        guard let url = APIClient.normalize(raw) else {
+            error = "Enter a full URL such as http://192.168.1.20:8787"
+            return false
+        }
+        UserDefaults.standard.set(url.absoluteString, forKey: Self.baseURLKey)
+        apiBaseURL = url
+        api = APIClient(baseURL: url)
+        error = nil
+        await refresh()
+        return error == nil
+    }
 
     func refresh(silent: Bool = false) async {
         if !silent { loading = true }
@@ -28,12 +52,21 @@ final class AppModel: ObservableObject {
         }
     }
 
+    /// Cheap poll: only the pending list. The account context changes rarely, so it is not polled.
+    func refreshPending() async {
+        do {
+            pending = try await api.pending()
+        } catch {
+            // Keep the last list on screen; a manual refresh shows the error.
+        }
+    }
+
     func startPolling() {
         guard pollTask == nil else { return }
         pollTask = Task { [weak self] in
             while !Task.isCancelled {
-                await self?.refresh(silent: true)
-                try? await Task.sleep(for: .seconds(2))
+                await self?.refreshPending()
+                try? await Task.sleep(for: .seconds(5))
             }
         }
     }

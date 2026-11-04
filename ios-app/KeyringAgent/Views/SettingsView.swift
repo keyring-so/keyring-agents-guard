@@ -3,12 +3,50 @@ import SwiftUI
 struct SettingsView: View {
     @EnvironmentObject private var model: AppModel
 
+    @State private var draftURL = ""
+    @State private var saving = false
+    @State private var message: String?
+    @State private var messageIsError = false
+
     var body: some View {
         List {
-            Section("API") {
-                InfoRow(label: "Base URL", value: AppConfig.apiBaseURL.absoluteString)
+            Section {
+                TextField("http://192.168.1.20:8787", text: $draftURL)
+                    .keyboardType(.URL)
+                    .textContentType(.URL)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+
+                Button {
+                    Task { await save() }
+                } label: {
+                    HStack {
+                        Text("Save and connect")
+                        if saving { Spacer(); ProgressView() }
+                    }
+                }
+                .disabled(saving || draftURL.trimmingCharacters(in: .whitespaces).isEmpty)
+
+                Button("Reset to default") {
+                    draftURL = AppConfig.apiBaseURL.absoluteString
+                    Task { await save() }
+                }
+                .disabled(saving)
+
+                if let message {
+                    Text(message)
+                        .font(.footnote)
+                        .foregroundStyle(messageIsError ? .red : .green)
+                }
+            } header: {
+                Text("API server")
+            } footer: {
+                Text("Simulator: http://127.0.0.1:8787. iPhone: your Mac's LAN address, with `node api/server.mjs` running on the Mac.")
+            }
+
+            Section("Account") {
                 InfoRow(label: "Account", value: AppConfig.account)
-                InfoRow(label: "Policy contract", value: AppConfig.account)
+                InfoRow(label: "Connected to", value: model.apiBaseURL.absoluteString)
             }
 
             Section("Card") {
@@ -22,7 +60,6 @@ struct SettingsView: View {
 
             Section("Notes") {
                 Text("Use a physical iPhone for NFC. The iOS Simulator cannot read the card.")
-                Text("On a device, set AppConfig.apiBaseURL to your Mac's LAN address, for example http://192.168.1.20:8787.")
                 Text("The API builds the unsigned approve/reject transaction; the card signs its hash. The API never sees the card key or the PIN.")
             }
 
@@ -43,5 +80,19 @@ struct SettingsView: View {
         }
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
+        .onAppear { draftURL = model.apiBaseURL.absoluteString }
+    }
+
+    private func save() async {
+        saving = true
+        defer { saving = false }
+        let ok = await model.saveAPIBaseURL(draftURL)
+        messageIsError = !ok
+        if ok {
+            draftURL = model.apiBaseURL.absoluteString
+            message = "Connected. Saved for next launch."
+        } else {
+            message = model.error ?? "Could not connect."
+        }
     }
 }

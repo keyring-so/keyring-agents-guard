@@ -87,7 +87,7 @@ open KeyringAgent.xcodeproj
 ```
 
 - Run on a **physical iPhone** for NFC.
-- Set `AppConfig.apiBaseURL` to the Mac's LAN address, e.g. `http://192.168.1.20:8787`.
+- In the app, open **Settings** (gear icon) and set the API server to the Mac's LAN address, e.g. `http://192.168.1.20:8787`. Tap **Save and connect**; the choice is saved for the next launch.
 - Set your development team in the target's Signing settings.
 
 See `ios-app/README.md` for the card CA key, entitlement, and device notes.
