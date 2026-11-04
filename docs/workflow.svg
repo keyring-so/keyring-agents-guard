@@ -1,0 +1,109 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#0F766E"/>
+    </marker>
+    <marker id="arrowMuted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#64748B"/>
+    </marker>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#0B1F33" flood-opacity="0.07"/>
+    </filter>
+    <style>
+      .title { font: 700 30px Inter, "SF Pro Display", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; fill: #0B1F33; }
+      .subtitle { font: 400 17px Inter, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; fill: #475569; }
+      .nodeTitle { font: 650 24px Inter, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; fill: #0B1F33; }
+      .nodeSub { font: 400 16px Inter, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; fill: #64748B; }
+      .label { font: 550 15px Inter, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; fill: #0F766E; }
+      .labelMuted { font: 500 15px Inter, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; fill: #64748B; }
+      .note { font: 500 14px Inter, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; fill: #475569; }
+      .warn { font: 550 14px Inter, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; fill: #B91C1C; }
+      .footer { font: 500 15px Inter, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; fill: #64748B; }
+    </style>
+  </defs>
+
+  <rect width="1600" height="900" fill="#F8FAFC"/>
+
+  <text x="64" y="72" class="title">Keyring Agent Workflow</text>
+  <text x="64" y="104" class="subtitle">Inside the limits the agent pays. Outside, the card authorizes.</text>
+
+  <!-- Agent -->
+  <rect x="64" y="320" width="220" height="128" rx="18" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2" filter="url(#shadow)"/>
+  <text x="174" y="374" text-anchor="middle" class="nodeTitle">AI Agent</text>
+  <text x="174" y="402" text-anchor="middle" class="nodeSub">function-call key</text>
+  <text x="174" y="426" text-anchor="middle" class="nodeSub">request_spend only</text>
+  <text x="174" y="480" text-anchor="middle" class="warn">cannot approve or transfer</text>
+
+  <!-- Contract -->
+  <rect x="364" y="320" width="280" height="128" rx="18" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2" filter="url(#shadow)"/>
+  <rect x="364" y="320" width="280" height="7" rx="3.5" fill="#0F766E"/>
+  <text x="504" y="374" text-anchor="middle" class="nodeTitle">NEAR Policy Contract</text>
+  <text x="504" y="402" text-anchor="middle" class="nodeSub">limits · pending queue</text>
+
+  <!-- Pay now -->
+  <rect x="414" y="132" width="220" height="100" rx="18" fill="#ECFDF5" stroke="#6EE7B7" stroke-width="2" filter="url(#shadow)"/>
+  <text x="524" y="178" text-anchor="middle" class="nodeTitle">Pay now</text>
+  <text x="524" y="204" text-anchor="middle" class="nodeSub">NEAR / Intents</text>
+
+  <!-- Pending -->
+  <rect x="760" y="520" width="220" height="100" rx="18" fill="#FFFBEB" stroke="#FCD34D" stroke-width="2" filter="url(#shadow)"/>
+  <text x="870" y="566" text-anchor="middle" class="nodeTitle">Pending queue</text>
+  <text x="870" y="592" text-anchor="middle" class="nodeSub">outside limits</text>
+
+  <!-- Watcher -->
+  <rect x="1080" y="520" width="220" height="100" rx="18" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2" filter="url(#shadow)"/>
+  <text x="1190" y="566" text-anchor="middle" class="nodeTitle">Watcher</text>
+  <text x="1190" y="592" text-anchor="middle" class="nodeSub">read-only · push</text>
+
+  <!-- App -->
+  <rect x="1080" y="320" width="280" height="128" rx="18" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2" filter="url(#shadow)"/>
+  <text x="1220" y="374" text-anchor="middle" class="nodeTitle">Keyring App</text>
+  <text x="1220" y="402" text-anchor="middle" class="nodeSub">fetch · show · approve</text>
+  <text x="1220" y="426" text-anchor="middle" class="note">phone shows the intent</text>
+
+  <!-- Card -->
+  <rect x="1120" y="132" width="220" height="100" rx="18" fill="#EFF6FF" stroke="#93C5FD" stroke-width="2" filter="url(#shadow)"/>
+  <path d="M1148 154 l14 -6 l14 6 v14 c0 10 -7 18 -14 21 c-7 -3 -14 -11 -14 -21 z" fill="#DBEAFE" stroke="#2563EB" stroke-width="1.5"/>
+  <text x="1254" y="178" text-anchor="middle" class="nodeTitle">Card</text>
+  <text x="1230" y="204" text-anchor="middle" class="nodeSub">NFC + PIN · root key</text>
+  <rect x="1120" y="88" width="220" height="28" rx="14" fill="#ECFDF5" stroke="#A7F3D0" stroke-width="1.5"/>
+  <text x="1230" y="107" text-anchor="middle" class="label" fill="#047857">only full-access key</text>
+
+  <!-- Arrows -->
+  <!-- Agent -> Contract -->
+  <line x1="284" y1="384" x2="356" y2="384" stroke="#0F766E" stroke-width="2.5" marker-end="url(#arrow)"/>
+
+  <!-- Contract -> Pay now -->
+  <line x1="504" y1="320" x2="504" y2="240" stroke="#0F766E" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <text x="518" y="285" class="label">inside limits</text>
+
+  <!-- Contract -> Pending -->
+  <line x1="644" y1="420" x2="754" y2="548" stroke="#D97706" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <rect x="654" y="462" width="118" height="26" rx="13" fill="#FFFBEB" stroke="#FCD34D" stroke-width="1"/>
+  <text x="713" y="480" text-anchor="middle" class="label" fill="#B45309">outside limits</text>
+
+  <!-- Pending -> Watcher -->
+  <line x1="980" y1="570" x2="1072" y2="570" stroke="#64748B" stroke-width="2.5" marker-end="url(#arrowMuted)"/>
+  <text x="1026" y="552" text-anchor="middle" class="labelMuted">event</text>
+
+  <!-- Watcher -> App -->
+  <line x1="1190" y1="520" x2="1190" y2="456" stroke="#64748B" stroke-width="2.5" marker-end="url(#arrowMuted)"/>
+  <text x="1206" y="494" class="labelMuted">push / deep link</text>
+
+  <!-- App -> Card -->
+  <line x1="1210" y1="320" x2="1210" y2="240" stroke="#0F766E" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <text x="1226" y="285" class="label">NFC + PIN</text>
+
+  <!-- Card -> App -->
+  <line x1="1300" y1="240" x2="1300" y2="312" stroke="#64748B" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#arrowMuted)"/>
+  <text x="1316" y="285" class="labelMuted">signature</text>
+
+  <!-- App -> Contract (return loop) -->
+  <polyline points="1080,448 1080,700 504,700 504,456" fill="none" stroke="#0F766E" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <rect x="716" y="680" width="152" height="30" rx="15" fill="#F8FAFC"/>
+  <text x="792" y="701" text-anchor="middle" class="label" font-size="16">approve / reject</text>
+
+  <!-- Footer -->
+  <text x="64" y="836" class="footer">The agent never holds a key that can move funds outside the policy.</text>
+  <text x="64" y="862" class="footer">The card is the root. The app is the display. The contract is the enforcement.</text>
+</svg>
