@@ -2,3 +2,10 @@ node_modules/
 target/
 .secrets/
 .DS_Store
+
+# iOS build artifacts
+ios-app/.build/
+ios-app/DerivedData/
+ios-app/*.xcodeproj/xcuserdata/
+ios-app/*.xcodeproj/project.xcworkspace/xcuserdata/
+*.xcuserstate
