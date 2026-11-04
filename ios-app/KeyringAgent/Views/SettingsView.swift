@@ -49,7 +49,20 @@ struct SettingsView: View {
                 InfoRow(label: "Connected to", value: model.apiBaseURL.absoluteString)
             }
 
-            Section("Card") {
+            Section {
+                if let card = model.card {
+                    InfoRow(label: "Card ID", value: card.cardUid)
+                }
+                Button("Forget card on this phone", role: .destructive) {
+                    model.forgetCard()
+                }
+            } header: {
+                Text("Card")
+            } footer: {
+                Text("Forgetting only removes the card from this phone. The card and its wallet are not changed.")
+            }
+
+            Section("Card reader") {
                 InfoRow(
                     label: "CA public key",
                     value: String(AppConfig.cardCAPublicKeyHex.prefix(18)) + "…"

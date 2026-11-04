@@ -8,7 +8,7 @@ struct KeyringAgentApp: App {
 
     var body: some Scene {
         WindowGroup {
-            PendingListView()
+            RootView()
                 .environmentObject(model)
                 .onOpenURL { model.handle(url: $0) }
                 .task {

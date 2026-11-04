@@ -90,7 +90,7 @@ open KeyringAgent.xcodeproj
 - In the app, open **Settings** (gear icon) and set the API server to the Mac's LAN address, e.g. `http://192.168.1.20:8787`. Tap **Save and connect**; the choice is saved for the next launch.
 - Set your development team in the target's Signing settings.
 
-See `ios-app/README.md` for the card CA key, entitlement, and device notes.
+See `ios-app/README.md` for the card CA key, entitlement, and device notes. To prepare a dev card (install the applet, store its certificate), see `docs/card-setup.md`.
 
 ### 4. Agent
 

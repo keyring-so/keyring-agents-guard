@@ -16,7 +16,6 @@ struct PinSheet: View {
     let onConfirm: (String) -> Void
 
     @State private var pin = ""
-    @FocusState private var focused: Bool
 
     var body: some View {
         VStack(spacing: 22) {
@@ -34,15 +33,7 @@ struct PinSheet: View {
                     .multilineTextAlignment(.center)
             }
 
-            ZStack {
-                PinDots(count: pin.count)
-                SecureField("", text: $pin)
-                    .keyboardType(.numberPad)
-                    .focused($focused)
-                    .opacity(0.02)
-            }
-            .contentShape(Rectangle())
-            .onTapGesture { focused = true }
+            PinField(pin: $pin)
 
             Button("Continue to card") {
                 onConfirm(pin)
@@ -52,6 +43,24 @@ struct PinSheet: View {
         }
         .padding(24)
         .presentationDetents([.medium])
+    }
+}
+
+/// Six-digit entry shown as dots. Digits only; the field keeps keyboard focus.
+struct PinField: View {
+    @Binding var pin: String
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        ZStack {
+            PinDots(count: pin.count)
+            SecureField("", text: $pin)
+                .keyboardType(.numberPad)
+                .focused($focused)
+                .opacity(0.02)
+        }
+        .contentShape(Rectangle())
+        .onTapGesture { focused = true }
         .onAppear { focused = true }
         .onChange(of: pin) { _, newValue in
             let digits = String(newValue.filter(\.isNumber).prefix(AppConfig.cardPINLength))

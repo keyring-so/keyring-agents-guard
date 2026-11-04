@@ -8,19 +8,26 @@
 
 /* Begin PBXBuildFile section */
 		1942FA6417EACDC02E6FED32 /* PinSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A0B4A0A2F42F0D2C9573AD5 /* PinSheet.swift */; };
+		1C7CF429E2406415C1AFF2A6 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A90465596F11E00B3A6FE71D /* RootView.swift */; };
 		21CDF4ACBC9CA89D4B581665 /* ApprovalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6543983F4ADB99D25D46CC33 /* ApprovalView.swift */; };
 		2648801D49F8A8CDDF387EC4 /* CardSigner.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0240AAD89D350B17A738A24 /* CardSigner.swift */; };
+		2BD579B4E63E0FB7409074CD /* AccountPendingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 336B0B7508B9CF7FF4EAC1C0 /* AccountPendingView.swift */; };
 		2D27CB6D42BECFACFEDDEACC /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D346F7BF7B6089D491B9C5F /* SettingsView.swift */; };
 		4DE144DF379FBE86B5E9DB4E /* Data+Hex.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8C44CA16BC37B0C5D618546 /* Data+Hex.swift */; };
 		5367BF39F4FDA4C15948F928 /* KeyringAgentApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00A60408344FD9A58AA28D62 /* KeyringAgentApp.swift */; };
+		5B84173F41153E7AD0A0E3A4 /* Bip39Words.swift in Sources */ = {isa = PBXBuildFile; fileRef = F766515D08866A29B70EB3B7 /* Bip39Words.swift */; };
 		639540F313B6C5F6E5FB6E4C /* NearTx.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6C86AFDAF7412756294AD7B /* NearTx.swift */; };
+		8B1BDB373FE7A26F2D495AC6 /* SetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5ABF79C33EECBE16AAA1C6A /* SetupView.swift */; };
 		8E067494223A4D0EA74A6A7C /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE19020DA9BA56BD1E4048E7 /* AppModel.swift */; };
 		A6EA1235206DA6650A89E647 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 0C3785FA8F06EF729D5D1C2A /* Assets.xcassets */; };
+		AA33371EE3EBC2B26F999EC3 /* CardSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA3C1EEB8E68AE58EEC9A94A /* CardSession.swift */; };
 		B4B24BEAE2CBC240F2EFDF89 /* Components.swift in Sources */ = {isa = PBXBuildFile; fileRef = D58857A5B091DE9D6C347A76 /* Components.swift */; };
 		BD4E8CD5D9E574BB0C02F241 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6224F2508219463A476F4257 /* APIClient.swift */; };
+		BDB1F894AEDAF1F111257D02 /* CardSetup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C10DB798C9C938FCF25587E /* CardSetup.swift */; };
 		C46D7738651B9D1D6BB02CE9 /* NFCCardTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E6BB654DA62E2574BB89833 /* NFCCardTransport.swift */; };
 		CCE545DB8618A9242E6ED0EC /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC2145DD2CC0454B315841B3 /* Models.swift */; };
 		D6383232F8BE4EF2CD4ECD0E /* KeyringCardClient in Frameworks */ = {isa = PBXBuildFile; productRef = A640D706B4D1827C6181F211 /* KeyringCardClient */; };
+		D7276281428DC4A0C94BE8FD /* Bip39.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5199774338319D9B717B1C7 /* Bip39.swift */; };
 		EDB478AC1025C5135F2D7F77 /* Config.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87F539D4580D7F775FC93300 /* Config.swift */; };
 		FEB880A782FF469B2064B478 /* PendingListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE113A673BAAAB13B1E42CF4 /* PendingListView.swift */; };
 /* End PBXBuildFile section */
@@ -28,20 +35,27 @@
 /* Begin PBXFileReference section */
 		00A60408344FD9A58AA28D62 /* KeyringAgentApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyringAgentApp.swift; sourceTree = "<group>"; };
 		0C3785FA8F06EF729D5D1C2A /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		336B0B7508B9CF7FF4EAC1C0 /* AccountPendingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountPendingView.swift; sourceTree = "<group>"; };
+		3C10DB798C9C938FCF25587E /* CardSetup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardSetup.swift; sourceTree = "<group>"; };
 		4E6BB654DA62E2574BB89833 /* NFCCardTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NFCCardTransport.swift; sourceTree = "<group>"; };
 		5A0B4A0A2F42F0D2C9573AD5 /* PinSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PinSheet.swift; sourceTree = "<group>"; };
 		6224F2508219463A476F4257 /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
 		6543983F4ADB99D25D46CC33 /* ApprovalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApprovalView.swift; sourceTree = "<group>"; };
 		7D346F7BF7B6089D491B9C5F /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		87F539D4580D7F775FC93300 /* Config.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Config.swift; sourceTree = "<group>"; };
+		A90465596F11E00B3A6FE71D /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		AA3C1EEB8E68AE58EEC9A94A /* CardSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardSession.swift; sourceTree = "<group>"; };
 		AC2145DD2CC0454B315841B3 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
 		AE19020DA9BA56BD1E4048E7 /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
 		B0240AAD89D350B17A738A24 /* CardSigner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardSigner.swift; sourceTree = "<group>"; };
+		B5ABF79C33EECBE16AAA1C6A /* SetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetupView.swift; sourceTree = "<group>"; };
 		C858625A31EC8DBF4F481599 /* client-swift */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "client-swift"; path = "../../near-hackthon-applets/client-swift"; sourceTree = SOURCE_ROOT; };
 		CE113A673BAAAB13B1E42CF4 /* PendingListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PendingListView.swift; sourceTree = "<group>"; };
 		D58857A5B091DE9D6C347A76 /* Components.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components.swift; sourceTree = "<group>"; };
+		E5199774338319D9B717B1C7 /* Bip39.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bip39.swift; sourceTree = "<group>"; };
 		ECDE14C4DE3C82520CEDA14E /* KeyringAgent.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = KeyringAgent.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F6C86AFDAF7412756294AD7B /* NearTx.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NearTx.swift; sourceTree = "<group>"; };
+		F766515D08866A29B70EB3B7 /* Bip39Words.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bip39Words.swift; sourceTree = "<group>"; };
 		F8C44CA16BC37B0C5D618546 /* Data+Hex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Data+Hex.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -68,13 +82,26 @@
 		5BBD0649625A3B328D47C64D /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				336B0B7508B9CF7FF4EAC1C0 /* AccountPendingView.swift */,
 				6543983F4ADB99D25D46CC33 /* ApprovalView.swift */,
 				D58857A5B091DE9D6C347A76 /* Components.swift */,
 				CE113A673BAAAB13B1E42CF4 /* PendingListView.swift */,
 				5A0B4A0A2F42F0D2C9573AD5 /* PinSheet.swift */,
+				A90465596F11E00B3A6FE71D /* RootView.swift */,
 				7D346F7BF7B6089D491B9C5F /* SettingsView.swift */,
+				B5ABF79C33EECBE16AAA1C6A /* SetupView.swift */,
 			);
 			path = Views;
+			sourceTree = "<group>";
+		};
+		6F236C1E22C3431BB182975B /* Setup */ = {
+			isa = PBXGroup;
+			children = (
+				E5199774338319D9B717B1C7 /* Bip39.swift */,
+				F766515D08866A29B70EB3B7 /* Bip39Words.swift */,
+				3C10DB798C9C938FCF25587E /* CardSetup.swift */,
+			);
+			path = Setup;
 			sourceTree = "<group>";
 		};
 		AB28D8A3C45BD3E4F1E48829 = {
@@ -100,6 +127,7 @@
 				6224F2508219463A476F4257 /* APIClient.swift */,
 				AE19020DA9BA56BD1E4048E7 /* AppModel.swift */,
 				0C3785FA8F06EF729D5D1C2A /* Assets.xcassets */,
+				AA3C1EEB8E68AE58EEC9A94A /* CardSession.swift */,
 				B0240AAD89D350B17A738A24 /* CardSigner.swift */,
 				87F539D4580D7F775FC93300 /* Config.swift */,
 				F8C44CA16BC37B0C5D618546 /* Data+Hex.swift */,
@@ -107,6 +135,7 @@
 				AC2145DD2CC0454B315841B3 /* Models.swift */,
 				F6C86AFDAF7412756294AD7B /* NearTx.swift */,
 				4E6BB654DA62E2574BB89833 /* NFCCardTransport.swift */,
+				6F236C1E22C3431BB182975B /* Setup */,
 				5BBD0649625A3B328D47C64D /* Views */,
 			);
 			path = KeyringAgent;
@@ -186,8 +215,13 @@
 			buildActionMask = 2147483647;
 			files = (
 				BD4E8CD5D9E574BB0C02F241 /* APIClient.swift in Sources */,
+				2BD579B4E63E0FB7409074CD /* AccountPendingView.swift in Sources */,
 				8E067494223A4D0EA74A6A7C /* AppModel.swift in Sources */,
 				21CDF4ACBC9CA89D4B581665 /* ApprovalView.swift in Sources */,
+				D7276281428DC4A0C94BE8FD /* Bip39.swift in Sources */,
+				5B84173F41153E7AD0A0E3A4 /* Bip39Words.swift in Sources */,
+				AA33371EE3EBC2B26F999EC3 /* CardSession.swift in Sources */,
+				BDB1F894AEDAF1F111257D02 /* CardSetup.swift in Sources */,
 				2648801D49F8A8CDDF387EC4 /* CardSigner.swift in Sources */,
 				B4B24BEAE2CBC240F2EFDF89 /* Components.swift in Sources */,
 				EDB478AC1025C5135F2D7F77 /* Config.swift in Sources */,
@@ -198,7 +232,9 @@
 				639540F313B6C5F6E5FB6E4C /* NearTx.swift in Sources */,
 				FEB880A782FF469B2064B478 /* PendingListView.swift in Sources */,
 				1942FA6417EACDC02E6FED32 /* PinSheet.swift in Sources */,
+				1C7CF429E2406415C1AFF2A6 /* RootView.swift in Sources */,
 				2D27CB6D42BECFACFEDDEACC /* SettingsView.swift in Sources */,
+				8B1BDB373FE7A26F2D495AC6 /* SetupView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

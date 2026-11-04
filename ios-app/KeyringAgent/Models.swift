@@ -62,6 +62,13 @@ struct SubmitResponse: Codable, Equatable {
     let failure: String?
 }
 
+/// The wallet this phone set up. Public data only: no PIN, seed, or words.
+struct CardRecord: Codable, Equatable {
+    let cardUid: String
+    let keyUid: String
+    let publicKeyHex: String
+}
+
 struct PendingResponse: Codable {
     let account: String
     let pending: [PendingSpend]

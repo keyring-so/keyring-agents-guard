@@ -20,18 +20,51 @@ final class AppModel: ObservableObject {
     @Published var path: [PendingSpend] = []
     @Published var error: String?
     @Published var phase: SigningPhase = .idle
+    @Published private(set) var card: CardRecord?
 
     @Published private(set) var apiBaseURL: URL
     private var api: APIClient
     private var pollTask: Task<Void, Never>?
 
     private static let baseURLKey = "apiBaseURL"
+    private static let cardKey = "cardRecord"
+
+    /// Where the phone is in first-run setup. Approvals appear only at `.ready`.
+    enum Stage: Equatable {
+        case loading
+        case needsCard
+        case needsAccount
+        case ready
+    }
+
+    var stage: Stage {
+        guard let card else { return .needsCard }
+        guard let context else { return .loading }
+        return context.approverKeyHex.lowercased() == card.publicKeyHex.lowercased() ? .ready : .needsAccount
+    }
 
     init() {
         let stored = UserDefaults.standard.string(forKey: Self.baseURLKey).flatMap(APIClient.normalize)
         let url = stored ?? AppConfig.apiBaseURL
         apiBaseURL = url
         api = APIClient(baseURL: url)
+        if let data = UserDefaults.standard.data(forKey: Self.cardKey) {
+            card = try? JSONDecoder().decode(CardRecord.self, from: data)
+        }
+    }
+
+    func saveCard(_ result: CardSetupResult) {
+        let record = CardRecord(cardUid: result.cardUid, keyUid: result.keyUid, publicKeyHex: result.publicKeyHex)
+        if let data = try? JSONEncoder().encode(record) {
+            UserDefaults.standard.set(data, forKey: Self.cardKey)
+        }
+        card = record
+    }
+
+    /// Forgets the card on this phone only. The card itself is not changed.
+    func forgetCard() {
+        UserDefaults.standard.removeObject(forKey: Self.cardKey)
+        card = nil
     }
 
     /// Validates, persists, and reconnects. Returns true when the server answers.
