@@ -55,7 +55,7 @@ struct PrepareResponse: Codable {
     let blockHashHex: String   // recent block hash, 32 bytes as hex
 }
 
-struct SubmitResponse: Codable {
+struct SubmitResponse: Codable, Equatable {
     let ok: Bool
     let hash: String
     let explorer: String

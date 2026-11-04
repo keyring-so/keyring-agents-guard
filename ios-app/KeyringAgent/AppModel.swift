@@ -1,14 +1,25 @@
 import Foundation
 
+/// One signing attempt, from preparing the transaction to the network's answer.
+enum SigningPhase: Equatable {
+    case idle
+    case working(String)
+    case done(SubmitResponse)
+    case failed(String)
+
+    var isWorking: Bool {
+        if case .working = self { return true }
+        return false
+    }
+}
+
 @MainActor
 final class AppModel: ObservableObject {
     @Published var context: AccountContext?
     @Published var pending: [PendingSpend] = []
     @Published var path: [PendingSpend] = []
     @Published var error: String?
-    @Published var status: String?
-    @Published var lastTx: SubmitResponse?
-    @Published var loading = false
+    @Published var phase: SigningPhase = .idle
 
     @Published private(set) var apiBaseURL: URL
     private var api: APIClient
@@ -38,8 +49,6 @@ final class AppModel: ObservableObject {
     }
 
     func refresh(silent: Bool = false) async {
-        if !silent { loading = true }
-        defer { if !silent { loading = false } }
         do {
             async let contextTask = api.context()
             async let pendingTask = api.pending()
@@ -48,7 +57,7 @@ final class AppModel: ObservableObject {
             self.pending = list
             if !silent { self.error = nil }
         } catch {
-            if !silent { self.error = error.localizedDescription }
+            if !silent { self.error = Self.friendly(error) }
         }
     }
 
@@ -97,6 +106,11 @@ final class AppModel: ObservableObject {
         }
     }
 
+    func resetPhase() {
+        guard !phase.isWorking else { return }
+        phase = .idle
+    }
+
     func approve(_ spend: PendingSpend, pin: String) async {
         await sign(action: "approve", spend: spend, pin: pin)
     }
@@ -106,19 +120,18 @@ final class AppModel: ObservableObject {
     }
 
     private func sign(action: String, spend: PendingSpend, pin: String) async {
-        error = nil
-        lastTx = nil
-        guard CardSigner.isAvailable else {
-            error = "NFC is not available. Use a physical iPhone with NFC enabled."
-            return
-        }
         guard action == "approve" || action == "reject" else { return }
-        guard let context else {
-            error = "Account details are not loaded yet. Pull to refresh."
+        guard CardSigner.isAvailable else {
+            phase = .failed("NFC is not available. Use a physical iPhone with NFC enabled.")
             return
         }
+        guard let context else {
+            phase = .failed("Account details are not loaded yet. Pull to refresh and try again.")
+            return
+        }
+
         do {
-            status = "Preparing \(action)…"
+            phase = .working("Preparing")
             let routing = try await api.prepare(action: action, id: spend.id)
 
             // Routing data must agree with what the human is looking at and with the account.
@@ -150,28 +163,43 @@ final class AppModel: ObservableObject {
                 throw Self.failure("The approver key is malformed. Nothing was signed.")
             }
 
-            status = "Hold your card near the iPhone…"
+            phase = .working("Hold your card near the top of iPhone")
             let signature = try await CardSigner.shared.sign(
                 digest: [UInt8](digest),
                 pin: pin,
                 expectedPublicKey: [UInt8](expectedKey)
             )
 
-            status = "Broadcasting…"
+            phase = .working("Broadcasting")
             let result = try await api.submit(
                 unsignedTxBase64: unsigned.base64EncodedString(),
                 signatureHex: Data(signature.signature).hex
             )
-            lastTx = result
-            status = result.ok ? "Confirmed on testnet." : "Transaction failed."
+            phase = result.ok ? .done(result) : .failed(result.failure ?? "The network rejected the transaction.")
             await refresh(silent: true)
         } catch {
-            self.error = error.localizedDescription
-            status = nil
+            phase = .failed(Self.friendly(error))
         }
     }
 
     private static func failure(_ message: String) -> NSError {
         NSError(domain: "KeyringAgent", code: 1, userInfo: [NSLocalizedDescriptionKey: message])
+    }
+
+    /// Plain-language messages. Raw RPC and JSON text stays out of the UI.
+    static func friendly(_ error: Error) -> String {
+        let text = error.localizedDescription
+        if text.contains("-429") || text.localizedCaseInsensitiveContains("rate limit") {
+            return "The network is busy. Try again in a moment."
+        }
+        if text.localizedCaseInsensitiveContains("could not connect")
+            || text.localizedCaseInsensitiveContains("offline")
+            || text.localizedCaseInsensitiveContains("timed out") {
+            return "Can't reach the Keyring API. Check the server address in Settings."
+        }
+        if text.hasPrefix("API ") {
+            return "The Keyring API returned an error. Check Settings and try again."
+        }
+        return text
     }
 }

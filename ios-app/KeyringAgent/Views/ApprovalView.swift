@@ -4,119 +4,167 @@ struct ApprovalView: View {
     let spend: PendingSpend
 
     @EnvironmentObject private var model: AppModel
-    @State private var pin = ""
-    @State private var working = false
+    @State private var decision: Decision?
 
     var body: some View {
-        List {
-            Section("Payment request") {
-                HStack {
-                    Text("Amount")
-                    Spacer()
-                    Text("\(spend.amountNear) NEAR").font(.headline)
-                }
-                InfoRow(label: "To", value: spend.receiverId)
-                HStack {
-                    Text("Reason")
-                    Spacer()
-                    ReasonBadge(reason: spend.reason, text: spend.reasonLabel)
-                }
-                Text(explanation)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-            }
+        ScrollView {
+            VStack(spacing: 20) {
+                header
 
-            Section("Card will sign") {
-                InfoRow(label: "Contract", value: AppConfig.account)
-                InfoRow(label: "Call", value: "approve or reject (\(spend.id))")
-                InfoRow(label: "Deposit", value: "0 NEAR")
-                InfoRow(label: "Gas", value: "30 TGas")
-            }
+                ReasonBanner(
+                    icon: spend.isHighRisk ? "exclamationmark.shield.fill" : "info.circle.fill",
+                    text: reasonSentence(spend.reason, perTxMaxNear: model.context?.policy.perTxMaxNear),
+                    tone: spend.isHighRisk ? Palette.danger : Palette.warning
+                )
 
-            if !spend.memo.isEmpty {
-                Section("Agent-provided memo — untrusted") {
-                    Text(spend.memo)
-                        .font(.callout)
-                        .textSelection(.enabled)
-                    Text("This text came from the agent, not from the contract. It may be malicious.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-
-            Section("Authorize with the card") {
-                if !CardSigner.isAvailable {
-                    Label("NFC is not available in the Simulator. Use a physical iPhone.", systemImage: "iphone.slash")
-                        .font(.footnote)
-                        .foregroundStyle(.orange)
+                if !spend.memo.isEmpty {
+                    memoCard
                 }
 
-                SecureField("6-digit card PIN", text: $pin)
-                    .keyboardType(.numberPad)
-                    .textContentType(.oneTimeCode)
-
-                Button {
-                    Task { await run("approve") }
-                } label: {
-                    Label("Approve with card", systemImage: "checkmark.shield.fill")
-                }
-                .disabled(!CardSigner.isAvailable || pin.count != AppConfig.cardPINLength || working)
-
-                Button(role: .destructive) {
-                    Task { await run("reject") }
-                } label: {
-                    Label("Reject", systemImage: "xmark.shield")
-                }
-                .disabled(!CardSigner.isAvailable || pin.count != AppConfig.cardPINLength || working)
-            }
-
-            if let status = model.status {
-                Section {
-                    Text(status).font(.subheadline)
-                }
-            }
-
-            if let error = model.error {
-                Section {
-                    Text(error).foregroundStyle(.red)
-                }
-            }
-
-            if let tx = model.lastTx {
-                Section("Result") {
-                    Text(tx.ok ? "Confirmed on testnet" : "Transaction failed")
-                        .font(.subheadline.weight(.semibold))
-                    if let url = URL(string: tx.explorer) {
-                        Link("View on NEAR Blocks", destination: url)
+                VStack(alignment: .leading, spacing: 12) {
+                    SectionTitle(text: "What the card signs")
+                    SurfaceCard {
+                        VStack(spacing: 12) {
+                            InfoRow(label: "Contract", value: AppConfig.account)
+                            InfoRow(label: "Action", value: "Approve or reject request \(spend.id)")
+                            InfoRow(label: "Deposit", value: "0 NEAR")
+                            InfoRow(label: "Gas", value: "30 TGas")
+                        }
                     }
                 }
+
+                if case .failed(let message) = model.phase {
+                    ReasonBanner(icon: "xmark.octagon.fill", text: message, tone: Palette.danger)
+                }
+            }
+            .padding(20)
+        }
+        .background(Palette.canvas)
+        .safeAreaInset(edge: .bottom) { bottomBar }
+        .navigationTitle("Request")
+        .navigationBarTitleDisplayMode(.inline)
+        .sheet(item: $decision) { choice in
+            PinSheet(decision: choice) { pin in
+                decision = nil
+                Task { await run(choice, pin: pin) }
             }
         }
-        .navigationTitle("Approval")
-        .navigationBarTitleDisplayMode(.inline)
+        .overlay {
+            if case .working(let text) = model.phase {
+                WorkingOverlay(text: text)
+            }
+        }
+        .onAppear { model.resetPhase() }
     }
 
-    private var explanation: String {
-        switch spend.reason {
-        case "OverTxLimit":
-            return "This payment is larger than the per-payment limit. The contract held it instead of paying automatically."
-        case "OverDailyLimit":
-            return "This payment would exceed today's agent budget. The contract held it instead of paying automatically."
-        case "NotAllowlisted":
-            return "The receiver is not on the allowlist. The contract held it instead of paying automatically."
-        default:
-            return "The contract held this payment for human approval."
+    private var header: some View {
+        VStack(spacing: 10) {
+            Text("Agent wants to pay")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            Text("\(spend.amountNear) NEAR")
+                .font(.system(size: 44, weight: .bold, design: .rounded))
+            Text(spend.receiverId)
+                .font(.callout.weight(.medium))
+                .lineLimit(1)
+                .truncationMode(.middle)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
+                .background(Palette.surface, in: Capsule())
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top, 8)
+    }
+
+    private var memoCard: some View {
+        SurfaceCard {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Label("Agent's note", systemImage: "text.quote")
+                        .font(.subheadline.weight(.semibold))
+                    Spacer()
+                    Text("Untrusted")
+                        .font(.caption.weight(.bold))
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(Palette.warning.opacity(0.15), in: Capsule())
+                        .foregroundStyle(Palette.warning)
+                }
+                Text(spend.memo)
+                    .font(.callout)
+                Text("Written by the agent, not the contract. Don't rely on it to describe the payment.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
     }
 
-    private func run(_ action: String) async {
-        working = true
-        defer { working = false }
-        if action == "approve" {
-            await model.approve(spend, pin: pin)
+    @ViewBuilder
+    private var bottomBar: some View {
+        if case .done(let result) = model.phase {
+            ResultFooter(result: result)
         } else {
-            await model.reject(spend, pin: pin)
+            HStack(spacing: 12) {
+                Button("Reject") { decision = .reject }
+                    .buttonStyle(SecondaryButtonStyle())
+                Button("Approve") { decision = .approve }
+                    .buttonStyle(PrimaryButtonStyle())
+            }
+            .disabled(model.phase.isWorking)
+            .padding(20)
+            .background(.bar)
         }
-        if model.error == nil { pin = "" }
+    }
+
+    private func run(_ choice: Decision, pin: String) async {
+        switch choice {
+        case .approve: await model.approve(spend, pin: pin)
+        case .reject: await model.reject(spend, pin: pin)
+        }
+    }
+}
+
+private struct ResultFooter: View {
+    let result: SubmitResponse
+
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        VStack(spacing: 14) {
+            Label("Confirmed on NEAR testnet", systemImage: "checkmark.seal.fill")
+                .font(.headline)
+                .foregroundStyle(Palette.accent)
+            if let url = URL(string: result.explorer) {
+                Link("View transaction", destination: url)
+                    .font(.subheadline)
+            }
+            Button("Back to requests") { dismiss() }
+                .buttonStyle(PrimaryButtonStyle())
+        }
+        .frame(maxWidth: .infinity)
+        .padding(20)
+        .background(.bar)
+    }
+}
+
+private struct WorkingOverlay: View {
+    let text: String
+
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.25).ignoresSafeArea()
+            VStack(spacing: 16) {
+                Image(systemName: "iphone.radiowaves.left.and.right")
+                    .font(.system(size: 36))
+                    .foregroundStyle(Palette.accent)
+                ProgressView()
+                Text(text)
+                    .font(.headline)
+                    .multilineTextAlignment(.center)
+            }
+            .padding(28)
+            .frame(maxWidth: 300)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        }
     }
 }

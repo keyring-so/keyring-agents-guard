@@ -5,55 +5,47 @@ struct PendingListView: View {
 
     var body: some View {
         NavigationStack(path: $model.path) {
-            List {
-                if let context = model.context {
-                    Section {
-                        ContextHeader(context: context)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 22) {
+                    if let context = model.context {
+                        BudgetCard(context: context)
                     }
-                }
 
-                Section("Pending approvals") {
+                    if let error = model.error {
+                        ReasonBanner(icon: "exclamationmark.triangle.fill", text: error, tone: Palette.danger)
+                    }
+
+                    SectionTitle(text: model.pending.isEmpty ? "Waiting for you" : "Waiting for you · \(model.pending.count)")
+
                     if model.pending.isEmpty {
-                        Text("No pending approvals. The agent is inside its policy.")
-                            .foregroundStyle(.secondary)
+                        SurfaceCard { EmptyInbox() }
                     } else {
-                        ForEach(model.pending) { spend in
-                            NavigationLink(value: spend) {
-                                PendingRow(spend: spend)
+                        VStack(spacing: 12) {
+                            ForEach(model.pending) { spend in
+                                NavigationLink(value: spend) {
+                                    RequestCard(spend: spend)
+                                }
+                                .buttonStyle(.plain)
                             }
                         }
                     }
                 }
-
-                if let error = model.error {
-                    Section {
-                        Text(error).foregroundStyle(.red)
-                    }
-                }
+                .padding(20)
             }
+            .background(Palette.canvas)
             .refreshable { await model.refresh() }
-            .navigationTitle("Keyring Agent")
+            .navigationTitle("Keyring")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     NavigationLink {
                         SettingsView()
                     } label: {
-                        Image(systemName: "gearshape")
+                        Image(systemName: "slider.horizontal.3")
                     }
                 }
             }
             .navigationDestination(for: PendingSpend.self) { spend in
                 ApprovalView(spend: spend)
-            }
-            .overlay(alignment: .bottom) {
-                if let status = model.status {
-                    Text(status)
-                        .font(.footnote.weight(.medium))
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 10)
-                        .background(.ultraThinMaterial, in: Capsule())
-                        .padding()
-                }
             }
         }
     }
