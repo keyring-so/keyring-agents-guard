@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// Shown after the card is set up but its key is not yet the approver of the account.
 struct AccountPendingView: View {
@@ -12,7 +13,7 @@ struct AccountPendingView: View {
                     .foregroundStyle(Palette.accent)
                 Text("Card ready")
                     .font(.title2.weight(.bold))
-                Text("This card's key is not yet the approver for \(AppConfig.account).")
+                Text("This card isn't linked to a NEAR account yet. Copy its public key and link it on the Mac.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -21,9 +22,14 @@ struct AccountPendingView: View {
                     SurfaceCard {
                         VStack(spacing: 12) {
                             InfoRow(label: "Card ID", value: card.cardUid)
-                            InfoRow(label: "Public key", value: Self.short(card.publicKeyHex))
+                            InfoRow(label: "Public key", value: card.publicKeyHex)
                         }
                     }
+
+                    Button("Copy public key") {
+                        UIPasteboard.general.string = card.publicKeyHex
+                    }
+                    .font(.subheadline)
                 }
 
                 ReasonBanner(
@@ -42,8 +48,4 @@ struct AccountPendingView: View {
         .background(Palette.canvas)
     }
 
-    private static func short(_ hex: String) -> String {
-        guard hex.count > 20 else { return hex }
-        return "\(hex.prefix(10))…\(hex.suffix(8))"
-    }
 }

@@ -1,5 +1,5 @@
 // Shared plumbing: testnet RPC, the Keyring card signer (jCardSim via the applet repo), and the
-// agent's local key.
+// agent keys. The user account signs; the policy hub is the receiver.
 
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -13,10 +13,16 @@ import { secp256k1 } from '@noble/curves/secp256k1';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
+/** The user account: holds the keys, pays gas, owns the policy entry. */
 export const ACCOUNT = process.env.NEAR_ACCOUNT ?? 'keyring-spike-1023.testnet';
+/** The shared policy contract: one deployment for every user. */
+export const POLICY_ACCOUNT = process.env.POLICY_ACCOUNT ?? ACCOUNT;
+/** The account that creates and funds new user accounts (testnet sponsor). */
+export const SPONSOR_ACCOUNT = process.env.SPONSOR_ACCOUNT ?? 'keyring-sponsor-1105.testnet';
 export const RPC = process.env.NEAR_RPC ?? 'https://test.rpc.fastnear.com';
 export const APPLETS_DIR = process.env.APPLETS_DIR ?? path.resolve(root, '../near-hackthon-applets');
 export const AGENT_KEY_FILE = path.join(root, '.secrets', 'agent-key.json');
+export const HUB_AGENT_KEY_FILE = path.join(root, '.secrets', 'agent-hub-key.json');
 export const WASM = path.join(root, 'contract/target/near/spend_policy.wasm');
 
 const KEY_TYPE = { ED25519: 0, SECP256K1: 1 };
@@ -33,12 +39,18 @@ export async function rpc(method, params) {
   return body.result;
 }
 
-export async function view(method, args = {}) {
+export async function viewAt(contract, method, args = {}) {
   const r = await rpc('query', {
-    request_type: 'call_function', finality: 'final', account_id: ACCOUNT,
+    request_type: 'call_function', finality: 'final', account_id: contract,
     method_name: method, args_base64: Buffer.from(JSON.stringify(args)).toString('base64'),
   });
+  if (r.error) throw new Error(`${contract}.${method}: ${r.error}`);
   return JSON.parse(Buffer.from(r.result).toString());
+}
+
+/** View the shared policy contract. */
+export async function view(method, args = {}) {
+  return viewAt(POLICY_ACCOUNT, method, args);
 }
 
 // --- signers ---------------------------------------------------------------------------------
@@ -68,37 +80,48 @@ export const card = {
   },
 };
 
-/** The agent: an ed25519 key kept in .secrets/, created on first use. */
-export const agent = {
-  keyPair() {
-    if (!fs.existsSync(AGENT_KEY_FILE)) {
-      fs.mkdirSync(path.dirname(AGENT_KEY_FILE), { recursive: true, mode: 0o700 });
-      const kp = KeyPair.fromRandom('ed25519');
-      fs.writeFileSync(AGENT_KEY_FILE, JSON.stringify({ secret_key: kp.toString() }, null, 2), { mode: 0o600 });
-    }
-    return KeyPair.fromString(JSON.parse(fs.readFileSync(AGENT_KEY_FILE, 'utf8')).secret_key);
-  },
-  publicKey() {
-    return this.keyPair().getPublicKey();
-  },
-  sign(hash) {
-    return new Signature({ keyType: KEY_TYPE.ED25519, data: this.keyPair().sign(hash).signature });
-  },
-};
+function makeAgent(file) {
+  return {
+    keyPair() {
+      if (!fs.existsSync(file)) {
+        fs.mkdirSync(path.dirname(file), { recursive: true, mode: 0o700 });
+        const kp = KeyPair.fromRandom('ed25519');
+        fs.writeFileSync(file, JSON.stringify({ secret_key: kp.toString() }, null, 2), { mode: 0o600 });
+      }
+      return KeyPair.fromString(JSON.parse(fs.readFileSync(file, 'utf8')).secret_key);
+    },
+    publicKey() {
+      return this.keyPair().getPublicKey();
+    },
+    sign(hash) {
+      return new Signature({ keyType: KEY_TYPE.ED25519, data: this.keyPair().sign(hash).signature });
+    },
+  };
+}
+
+/** The original single-account agent. */
+export const agent = makeAgent(AGENT_KEY_FILE);
+/** The agent for the shared policy hub; its key is added to the user account. */
+export const hubAgent = makeAgent(HUB_AGENT_KEY_FILE);
 
 // --- transactions ----------------------------------------------------------------------------
 
-/** Build a tx from ACCOUNT to itself (or `receiver`), sign it with `signer`, and wait for it. */
-export async function send(signer, actions, receiver = ACCOUNT) {
+/** Sign a tx as `account` and send it to `receiver` (defaults to `account` itself). */
+export async function sendAt(account, signer, actions, receiver = account) {
   const publicKey = signer.publicKey();
   const ak = await rpc('query', {
-    request_type: 'view_access_key', finality: 'final', account_id: ACCOUNT, public_key: publicKey.toString(),
+    request_type: 'view_access_key', finality: 'final', account_id: account, public_key: publicKey.toString(),
   });
-  const tx = createTransaction(ACCOUNT, publicKey, receiver, BigInt(ak.nonce) + 1n, actions, baseDecode(ak.block_hash));
+  const tx = createTransaction(account, publicKey, receiver, BigInt(ak.nonce) + 1n, actions, baseDecode(ak.block_hash));
   const hash = createHash('sha256').update(encodeTransaction(tx)).digest();
   const signed = new SignedTransaction({ transaction: tx, signature: signer.sign(hash, publicKey) });
   const result = await rpc('broadcast_tx_commit', [Buffer.from(signed.encode()).toString('base64')]);
   return summarize(result);
+}
+
+/** The common case: the user account. */
+export async function send(signer, actions, receiver = ACCOUNT) {
+  return sendAt(ACCOUNT, signer, actions, receiver);
 }
 
 function summarize(result) {

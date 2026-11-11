@@ -101,6 +101,14 @@ struct BudgetCard: View {
                 }
                 .font(.footnote)
                 .foregroundStyle(.secondary)
+
+                HStack {
+                    Label("In the hub", systemImage: "banknote")
+                    Spacer()
+                    Text("\(context.balanceNear) NEAR")
+                }
+                .font(.footnote)
+                .foregroundStyle(.secondary)
             }
         }
     }

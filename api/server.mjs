@@ -12,11 +12,17 @@
 // verifies the id on-chain before it broadcasts anything to clients.
 
 import http from 'node:http';
-import { createHash } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
+import { actionCreators } from '@near-js/transactions';
 import { PublicKey } from '@near-js/crypto';
-import { baseDecode } from '@near-js/utils';
+import { baseDecode, baseEncode } from '@near-js/utils';
 import { secp256k1 } from '@noble/curves/secp256k1';
-import { ACCOUNT, RPC, rpc, view } from '../scripts/near.mjs';
+import {
+  ACCOUNT, POLICY_ACCOUNT, SPONSOR_ACCOUNT, RPC,
+  card, hubAgent, rpc, sendAt, viewAt, yocto,
+} from '../scripts/near.mjs';
+
+const { createAccount, addKey, fullAccessKey, functionCallAccessKey, transfer } = actionCreators;
 
 const PORT = Number(process.env.API_PORT ?? 8787);
 const HOST = process.env.API_HOST ?? '0.0.0.0';
@@ -54,25 +60,37 @@ function normalizePending(p) {
 const cache = new Map();
 let rpcCalls = 0;
 
-function cachedView(method, ttlMs, args = {}) {
-  const hit = cache.get(method);
+function cachedCall(key, ttlMs, fn) {
+  const hit = cache.get(key);
   if (hit && Date.now() - hit.at < ttlMs) return hit.promise;
   rpcCalls += 1;
-  const entry = { at: Date.now(), promise: view(method, args) };
-  cache.set(method, entry);
+  const entry = { at: Date.now(), promise: fn() };
+  cache.set(key, entry);
   entry.promise.catch(() => {
-    if (cache.get(method) === entry) cache.delete(method);
+    if (cache.get(key) === entry) cache.delete(key);
   });
   return entry.promise;
 }
 
-function freshView(method, args = {}) {
+function freshCall(fn) {
   rpcCalls += 1;
-  return view(method, args);
+  return fn();
 }
 
-async function pendingList({ fresh = false } = {}) {
-  const list = fresh ? await freshView('get_pending') : await cachedView('get_pending', 3000);
+/** The user account this request is for. The iOS app sends X-User-Account. */
+function accountOf(req, url) {
+  return String(req.headers['x-user-account'] ?? url.searchParams.get('account') ?? ACCOUNT);
+}
+
+/** A user's hub entry. */
+function userEntry(account, { fresh = false } = {}) {
+  const load = () => viewAt(POLICY_ACCOUNT, 'get_user', { account });
+  return fresh ? freshCall(load) : cachedCall(`user:${account}`, 3000, load);
+}
+
+async function pendingList(account, { fresh = false } = {}) {
+  const load = () => viewAt(POLICY_ACCOUNT, 'get_pending', { account });
+  const list = fresh ? await freshCall(load) : await cachedCall(`pending:${account}`, 3000, load);
   return Array.isArray(list) ? list.map(normalizePending) : [];
 }
 
@@ -138,48 +156,56 @@ function broadcast(event, data) {
 // ---------------------------------------------------------------------------------------------
 // Chain reads
 
-async function context() {
-  const [policy, budget, keys, pending] = await Promise.all([
-    cachedView('get_policy', 60_000),
-    cachedView('get_budget', 3000),
-    cachedView('get_keys', 60_000),
-    pendingList(),
-  ]);
-  const approver = PublicKey.fromString(keys.approver_key);
+async function context(account) {
+  let user;
+  try {
+    user = await userEntry(account);
+  } catch (err) {
+    if (String(err.message).includes('not registered')) {
+      throw httpError(409, 'This card is not linked to the shared policy contract yet.');
+    }
+    throw err;
+  }
+  const pending = await pendingList(account);
+  const approver = PublicKey.fromString(user.keys.approver_key);
   return {
-    account: ACCOUNT,
+    account,
+    contractId: POLICY_ACCOUNT,
     rpc: RPC,
     policy: {
-      perTxMaxNear: formatNear(policy.per_tx_max),
-      dailyMaxNear: formatNear(policy.daily_max),
-      allowlist: policy.allowlist ?? [],
+      perTxMaxNear: formatNear(user.policy.per_tx_max),
+      dailyMaxNear: formatNear(user.policy.daily_max),
+      allowlist: user.policy.allowlist ?? [],
     },
     budget: {
-      spentTodayNear: formatNear(budget.spent_today),
-      remainingTodayNear: formatNear(budget.remaining_today),
+      spentTodayNear: formatNear(user.budget.spent_today),
+      remainingTodayNear: formatNear(user.budget.remaining_today),
     },
-    approverKey: keys.approver_key,
+    balanceNear: formatNear(user.balance),
+    paused: user.paused,
+    approverKey: user.keys.approver_key,
     approverKeyHex: Buffer.from(approver.data).toString('hex'),
-    agentKey: keys.agent_key,
+    agentKey: user.keys.agent_key,
     pendingCount: pending.length,
   };
 }
 
-async function prepareTx(action, id) {
+async function prepareTx(account, action, id) {
   if (action !== 'approve' && action !== 'reject') {
     throw httpError(400, 'action must be approve or reject');
   }
   // Read fresh: the human is about to sign this exact request.
-  const pending = await pendingList({ fresh: true });
+  const pending = await pendingList(account, { fresh: true });
   const item = pending.find((p) => p.id === String(id));
   if (!item) throw httpError(404, `pending spend ${id} not found`);
 
-  const keys = await cachedView('get_keys', 60_000);
+  const user = await userEntry(account);
+  const approverKey = user.keys.approver_key;
   const ak = await rpc('query', {
     request_type: 'view_access_key',
     finality: 'final',
-    account_id: ACCOUNT,
-    public_key: keys.approver_key,
+    account_id: account,
+    public_key: approverKey,
   });
 
   // Routing data only. The app builds and signs the transaction itself from these fields.
@@ -187,9 +213,9 @@ async function prepareTx(action, id) {
     action,
     id: String(id),
     pending: item,
-    signerId: ACCOUNT,
-    receiverId: ACCOUNT,
-    publicKey: keys.approver_key,
+    signerId: account,
+    receiverId: POLICY_ACCOUNT,
+    publicKey: approverKey,
     nonce: (BigInt(ak.nonce) + 1n).toString(),
     blockHashHex: Buffer.from(baseDecode(ak.block_hash)).toString('hex'),
   };
@@ -198,15 +224,15 @@ async function prepareTx(action, id) {
 // Routing only. The app sends the unsigned bytes it built plus the card's 64-byte signature.
 // The API checks that the signature recovers the approver key over those exact bytes, appends
 // the recovery byte, and broadcasts. It cannot change what was signed.
-async function submitTx(unsignedTxBase64, signatureHex) {
+async function submitTx(account, unsignedTxBase64, signatureHex) {
   const txBytes = Buffer.from(String(unsignedTxBase64 ?? ''), 'base64');
   if (txBytes.length === 0) throw httpError(400, 'unsignedTxBase64 is required');
   const sig = Buffer.from(String(signatureHex ?? ''), 'hex');
   if (sig.length !== 64) throw httpError(400, 'signature must be 64 bytes (r‖s)');
 
   const hash = createHash('sha256').update(txBytes).digest();
-  const keys = await cachedView('get_keys', 60_000);
-  const pub = Buffer.from(PublicKey.fromString(keys.approver_key).data);
+  const user = await userEntry(account);
+  const pub = Buffer.from(PublicKey.fromString(user.keys.approver_key).data);
   let v = null;
   for (let candidate = 0; candidate < 2; candidate++) {
     const recovered = secp256k1.Signature.fromCompact(sig)
@@ -243,6 +269,144 @@ async function submitTx(unsignedTxBase64, signatureHex) {
   };
 }
 
+
+// ---------------------------------------------------------------------------------------------
+// Onboarding and generic broadcast
+
+function cardKeyFromHex(hex) {
+  return PublicKey.fromString(`secp256k1:${baseEncode(Buffer.from(hex, 'hex'))}`);
+}
+
+/** What the app needs to sign register/deposit for a new user account. */
+async function prepareOnboarding(account, cardPublicKeyHex) {
+  const publicKey = cardKeyFromHex(cardPublicKeyHex);
+  let ak;
+  for (let attempt = 0; attempt < 12; attempt++) {
+    try {
+      ak = await rpc('query', {
+        request_type: 'view_access_key',
+        finality: 'optimistic',
+        account_id: account,
+        public_key: publicKey.toString(),
+      });
+      if (ak?.nonce) break;
+    } catch {
+      // The account or key may not be visible yet; retry briefly.
+    }
+    await new Promise((r) => setTimeout(r, 500));
+  }
+  if (!ak?.nonce) throw httpError(502, 'the new account is not ready yet; try again');
+  const agent = hubAgent.publicKey();
+  return {
+    account,
+    publicKey: publicKey.toString(),
+    signerId: account,
+    receiverId: POLICY_ACCOUNT,
+    nonce: (BigInt(ak.nonce) + 1n).toString(),
+    blockHashHex: Buffer.from(baseDecode(ak.block_hash)).toString('hex'),
+    agentKey: agent.toString(),
+    agentKeyHex: Buffer.from(agent.data).toString('hex'),
+    agentKeyType: 0,
+    registrationFeeYocto: yocto('0.01'),
+    depositYocto: yocto('1'),
+    policy: { per_tx_max: yocto('0.5'), daily_max: yocto('1'), allowlist: ['testnet'] },
+  };
+}
+
+/** Create a fresh sub-account with the card key (full access) and the agent key (function call). */
+async function sponsorAccount(cardPublicKeyHex) {
+  if (!/^[0-9a-fA-F]{128}$/.test(String(cardPublicKeyHex ?? ''))) {
+    throw httpError(400, 'cardPublicKeyHex must be 64 bytes of hex');
+  }
+  const publicKey = cardKeyFromHex(cardPublicKeyHex);
+  const agent = hubAgent.publicKey();
+  const account = `u${randomBytes(5).toString('hex')}.${SPONSOR_ACCOUNT}`;
+
+  const result = await sendAt(SPONSOR_ACCOUNT, card, [
+    createAccount(),
+    addKey(publicKey, fullAccessKey()),
+    addKey(agent, functionCallAccessKey(POLICY_ACCOUNT, ['request_spend'], BigInt(yocto('0.25')))),
+    transfer(BigInt(yocto('2'))),
+  ], account);
+  if (!result.ok) throw httpError(502, `sponsor failed: ${JSON.stringify(result.failure)}`);
+
+  return prepareOnboarding(account, cardPublicKeyHex);
+}
+
+/** Assemble a signed transaction from the app's bytes and the card's r||s signature. */
+function signedBytes(unsigned, signature, publicKeyString) {
+  const hash = createHash('sha256').update(unsigned).digest();
+  const keyType = publicKeyString.startsWith('ed25519:') ? 0 : 1;
+  if (keyType === 0) return Buffer.concat([unsigned, Buffer.from([0]), signature]);
+
+  const pub = Buffer.from(PublicKey.fromString(publicKeyString).data);
+  let v = null;
+  for (let candidate = 0; candidate < 2; candidate++) {
+    const recovered = secp256k1.Signature.fromCompact(signature)
+      .addRecoveryBit(candidate)
+      .recoverPublicKey(hash)
+      .toRawBytes(false)
+      .subarray(1);
+    if (Buffer.from(recovered).equals(pub)) {
+      v = candidate;
+      break;
+    }
+  }
+  if (v === null) throw httpError(400, 'signature does not match the public key');
+  return Buffer.concat([unsigned, Buffer.from([1]), signature, Buffer.from([v])]);
+}
+
+async function broadcastSigned(unsignedBase64, signatureHex, publicKeyString) {
+  const unsigned = Buffer.from(String(unsignedBase64 ?? ''), 'base64');
+  const sig = Buffer.from(String(signatureHex ?? ''), 'hex');
+  if (unsigned.length === 0) throw httpError(400, 'unsignedTxBase64 is required');
+  if (sig.length !== 64) throw httpError(400, 'signature must be 64 bytes');
+  if (!publicKeyString) throw httpError(400, 'publicKey is required');
+
+  const signed = signedBytes(unsigned, sig, publicKeyString);
+  const result = await rpc('broadcast_tx_commit', [signed.toString('base64')]);
+  const failure =
+    result.status?.Failure ??
+    result.receipts_outcome?.map((r) => r.outcome?.status?.Failure).find(Boolean) ??
+    null;
+  return {
+    ok: !failure,
+    hash: result.transaction.hash,
+    explorer: `https://testnet.nearblocks.io/txns/${result.transaction.hash}`,
+    failure,
+  };
+}
+
+/** Testnet sponsor account; production uses a sponsor service instead. */
+async function ensureSponsor() {
+  try {
+    await rpc('query', { request_type: 'view_account', finality: 'final', account_id: SPONSOR_ACCOUNT });
+    return;
+  } catch {
+    // create it below
+  }
+  try {
+    const publicKey = card.publicKey().toString();
+    console.log(`[api] creating sponsor ${SPONSOR_ACCOUNT}`);
+    const res = await fetch('https://helper.nearprotocol.com/account', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ newAccountId: SPONSOR_ACCOUNT, newAccountPublicKey: publicKey }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    for (let i = 0; i < 20; i++) {
+      try {
+        await rpc('query', { request_type: 'view_account', finality: 'final', account_id: SPONSOR_ACCOUNT });
+        return;
+      } catch {
+        await new Promise((r) => setTimeout(r, 500));
+      }
+    }
+  } catch (err) {
+    console.warn(`[api] sponsor setup failed: ${err.message}`);
+  }
+}
+
 // ---------------------------------------------------------------------------------------------
 // Routes
 
@@ -257,24 +421,26 @@ async function route(req, res, url) {
   }
 
   if (url.pathname === '/health') {
-    return sendJson(res, 200, { ok: true, account: ACCOUNT, rpc: RPC, rpcCalls });
+    return sendJson(res, 200, { ok: true, account: ACCOUNT, contract: POLICY_ACCOUNT, sponsor: SPONSOR_ACCOUNT, rpc: RPC, rpcCalls });
   }
 
   if (!authorized(req, url)) {
     return sendJson(res, 401, { error: 'unauthorized' });
   }
 
+  const account = accountOf(req, url);
+
   if (req.method === 'GET' && url.pathname === '/api/context') {
-    return sendJson(res, 200, await context());
+    return sendJson(res, 200, await context(account));
   }
 
   if (req.method === 'GET' && url.pathname === '/api/pending') {
-    return sendJson(res, 200, { account: ACCOUNT, pending: await pendingList() });
+    return sendJson(res, 200, { account, contract: POLICY_ACCOUNT, pending: await pendingList(account) });
   }
 
   if (req.method === 'GET' && url.pathname.startsWith('/api/pending/')) {
     const id = decodeURIComponent(url.pathname.slice('/api/pending/'.length));
-    const item = (await pendingList()).find((p) => p.id === id);
+    const item = (await pendingList(account)).find((p) => p.id === id);
     if (!item) return sendJson(res, 404, { error: `pending spend ${id} not found` });
     return sendJson(res, 200, item);
   }
@@ -287,7 +453,7 @@ async function route(req, res, url) {
       connection: 'keep-alive',
       'access-control-allow-origin': '*',
     });
-    res.write(`event: snapshot\ndata: ${JSON.stringify(await pendingList())}\n\n`);
+    res.write(`event: snapshot\ndata: ${JSON.stringify(await pendingList(account))}\n\n`);
     const client = { res };
     clients.add(client);
     req.on('close', () => clients.delete(client));
@@ -298,7 +464,8 @@ async function route(req, res, url) {
   if (req.method === 'POST' && url.pathname === '/api/agent/notify') {
     const body = await readBody(req);
     if (body.id === undefined) return sendJson(res, 400, { error: 'id is required' });
-    const item = (await pendingList({ fresh: true })).find((p) => p.id === String(body.id));
+    const notifyAccount = String(body.account ?? account);
+    const item = (await pendingList(notifyAccount, { fresh: true })).find((p) => p.id === String(body.id));
     if (!item) return sendJson(res, 404, { error: `pending spend ${body.id} not found` });
     announced.add(item.id);
     broadcast('pending', item);
@@ -309,7 +476,7 @@ async function route(req, res, url) {
   if (req.method === 'POST' && url.pathname.startsWith('/api/tx/prepare/')) {
     const [action, id] = url.pathname.slice('/api/tx/prepare/'.length).split('/');
     if (!action || id === undefined) return sendJson(res, 404, { error: 'not found' });
-    return sendJson(res, 200, await prepareTx(action, id));
+    return sendJson(res, 200, await prepareTx(account, action, id));
   }
 
   // Routing: relays the app's signed transaction to the network.
@@ -318,7 +485,32 @@ async function route(req, res, url) {
     if (!body.unsignedTxBase64 || !body.signatureHex) {
       return sendJson(res, 400, { error: 'unsignedTxBase64 and signatureHex are required' });
     }
-    return sendJson(res, 200, await submitTx(body.unsignedTxBase64, body.signatureHex));
+    return sendJson(res, 200, await submitTx(account, body.unsignedTxBase64, body.signatureHex));
+  }
+
+
+  // Sponsor onboarding: create a fresh account with the card key and the agent key.
+  if (req.method === 'POST' && url.pathname === '/api/onboard/sponsor') {
+    const body = await readBody(req);
+    return sendJson(res, 200, await sponsorAccount(body.cardPublicKeyHex));
+  }
+
+  // What the app needs to sign register and deposit for a new account.
+  if (req.method === 'POST' && url.pathname === '/api/onboard/prepare') {
+    const body = await readBody(req);
+    if (!body.account || !body.cardPublicKeyHex) {
+      return sendJson(res, 400, { error: 'account and cardPublicKeyHex are required' });
+    }
+    return sendJson(res, 200, await prepareOnboarding(String(body.account), body.cardPublicKeyHex));
+  }
+
+  // Generic relay for card-signed onboarding transactions.
+  if (req.method === 'POST' && url.pathname === '/api/broadcast') {
+    const body = await readBody(req);
+    if (!body.unsignedTxBase64 || !body.signatureHex || !body.publicKey) {
+      return sendJson(res, 400, { error: 'unsignedTxBase64, signatureHex and publicKey are required' });
+    }
+    return sendJson(res, 200, await broadcastSigned(body.unsignedTxBase64, body.signatureHex, body.publicKey));
   }
 
   return sendJson(res, 404, { error: 'not found' });
@@ -329,7 +521,7 @@ async function route(req, res, url) {
 setInterval(async () => {
   if (clients.size === 0) return;
   try {
-    for (const item of await pendingList()) {
+    for (const item of await pendingList(ACCOUNT)) {
       if (!announced.has(item.id)) {
         announced.add(item.id);
         broadcast('pending', item);
@@ -354,16 +546,17 @@ const server = http.createServer((req, res) => {
 
 async function seed() {
   try {
-    const list = await pendingList();
+    const list = await pendingList(ACCOUNT);
     for (const item of list) announced.add(item.id);
   } catch (err) {
     console.warn(`[api] could not seed pending list: ${err.message}`);
   }
 }
 
+await ensureSponsor();
 await seed();
 server.listen(PORT, HOST, () => {
   console.log(`[api] listening on http://${HOST}:${PORT}`);
-  console.log(`[api] account ${ACCOUNT} via ${RPC}`);
+  console.log(`[api] default account ${ACCOUNT}, hub ${POLICY_ACCOUNT}, sponsor ${SPONSOR_ACCOUNT}`);
   if (TOKEN) console.log('[api] API_TOKEN is set; clients must send Authorization: Bearer <token>');
 });

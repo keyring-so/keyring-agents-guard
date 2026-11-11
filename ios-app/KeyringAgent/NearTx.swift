@@ -13,7 +13,8 @@ struct NearFunctionCallTx {
     let methodName: String
     let argsJSON: Data
     let gasTGas: UInt64
-    // Deposit is fixed at zero: the approval key never moves NEAR.
+    /// Attached deposit in yoctoNEAR, as a decimal string. Approvals use "0"; onboarding uses the fee and funding.
+    let depositYocto: String
 
     enum BuildError: LocalizedError {
         case invalidPublicKey
@@ -50,7 +51,7 @@ struct NearFunctionCallTx {
         out.appendBorshString(methodName)
         out.appendBorshBytes(argsJSON)
         out.appendUInt64(gasTGas * 1_000_000_000_000)
-        out.append(Data(count: 16))                // deposit: u128 = 0
+        out.appendU128Decimal(depositYocto)
         return out
     }
 
@@ -86,5 +87,28 @@ private extension Data {
     mutating func appendBorshBytes(_ value: Data) {
         appendUInt32(UInt32(value.count))
         append(value)
+    }
+
+    /// Borsh u128: 16 bytes, little-endian. Deposits are small enough to fit.
+    mutating func appendU128Decimal(_ decimal: String) {
+        var lo: UInt64 = 0
+        var hi: UInt64 = 0
+        for scalar in decimal.unicodeScalars {
+            guard let digit = UInt64(String(scalar)), digit < 10 else { continue }
+            let lo10 = lo.multipliedFullWidth(by: 10)
+            let hi10 = hi.multipliedFullWidth(by: 10)
+            precondition(hi10.high == 0, "deposit exceeds u128")
+            let (hiWithCarry, hiOverflow) = hi10.low.addingReportingOverflow(lo10.high)
+            precondition(!hiOverflow, "deposit exceeds u128")
+            let (lowWithDigit, lowCarry) = lo10.low.addingReportingOverflow(digit)
+            let (finalHi, finalOverflow) = hiWithCarry.addingReportingOverflow(lowCarry ? 1 : 0)
+            precondition(!finalOverflow, "deposit exceeds u128")
+            lo = lowWithDigit
+            hi = finalHi
+        }
+        var leLo = lo.littleEndian
+        var leHi = hi.littleEndian
+        append(Data(bytes: &leLo, count: 8))
+        append(Data(bytes: &leHi, count: 8))
     }
 }

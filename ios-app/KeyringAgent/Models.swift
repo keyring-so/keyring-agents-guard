@@ -12,10 +12,13 @@ struct Budget: Codable, Equatable {
 }
 
 struct AccountContext: Codable, Equatable {
-    let account: String
+    let account: String          // the user's account; signs the transaction
+    let contractId: String       // the shared policy hub; receives the call
     let rpc: String
     let policy: Policy
     let budget: Budget
+    let balanceNear: String
+    let paused: Bool
     let approverKey: String
     let approverKeyHex: String
     let agentKey: String
@@ -67,6 +70,30 @@ struct CardRecord: Codable, Equatable {
     let cardUid: String
     let keyUid: String
     let publicKeyHex: String
+    /// The NEAR account created for this card. Nil until onboarding finishes.
+    var accountId: String?
+}
+
+struct OnboardPolicy: Codable {
+    let per_tx_max: String
+    let daily_max: String
+    let allowlist: [String]
+}
+
+/// Everything the app needs to sign register and deposit for a fresh account.
+struct OnboardPrepare: Codable {
+    let account: String
+    let publicKey: String
+    let signerId: String
+    let receiverId: String
+    let nonce: String
+    let blockHashHex: String
+    let agentKey: String
+    let agentKeyHex: String
+    let agentKeyType: Int
+    let registrationFeeYocto: String
+    let depositYocto: String
+    let policy: OnboardPolicy
 }
 
 struct PendingResponse: Codable {

@@ -1,10 +1,10 @@
-// The agent's side: ask the policy contract to pay, signed with the agent's function-call key.
+// The agent's side: ask the shared policy hub to pay, signed with the agent's function-call key.
 //
 //   node scripts/agent.mjs spend <receiver> <near> [memo]
 //   node scripts/agent.mjs budget
 
 import { actionCreators } from '@near-js/transactions';
-import { agent, print, send, view, yocto } from './near.mjs';
+import { ACCOUNT, hubAgent, POLICY_ACCOUNT, print, sendAt, viewAt, yocto } from './near.mjs';
 
 const [cmd, ...args] = process.argv.slice(2);
 const TGAS = 10n ** 12n;
@@ -13,9 +13,9 @@ const API_URL = process.env.API_URL ?? 'http://127.0.0.1:8787';
 if (cmd === 'spend') {
   const [receiver_id, near, memo = ''] = args;
   if (!receiver_id || !near) throw new Error('usage: agent.mjs spend <receiver> <near> [memo]');
-  const result = await send(agent, [
+  const result = await sendAt(ACCOUNT, hubAgent, [
     actionCreators.functionCall('request_spend', { receiver_id, amount: yocto(near), memo }, 50n * TGAS, 0n),
-  ]);
+  ], POLICY_ACCOUNT);
   print(result);
 
   // Tell the approval API about a held spend. The API verifies it on-chain before
@@ -25,7 +25,7 @@ if (cmd === 'spend') {
       const res = await fetch(`${API_URL}/api/agent/notify`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ id: String(result.value.id) }),
+        body: JSON.stringify({ id: String(result.value.id), account: ACCOUNT }),
       });
       if (res.ok) console.log(`notified     ${API_URL} (pending #${result.value.id})`);
     } catch {
@@ -33,7 +33,7 @@ if (cmd === 'spend') {
     }
   }
 } else if (cmd === 'budget') {
-  console.log(JSON.stringify({ policy: await view('get_policy'), budget: await view('get_budget') }, null, 2));
+  console.log(JSON.stringify(await viewAt(POLICY_ACCOUNT, 'get_user', { account: ACCOUNT }), null, 2));
 } else {
   console.error('usage: agent.mjs spend <receiver> <near> [memo] | budget');
   process.exitCode = 2;

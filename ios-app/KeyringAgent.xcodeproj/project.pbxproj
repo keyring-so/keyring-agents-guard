@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 60;
+	objectVersion = 54;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -19,9 +19,11 @@
 		639540F313B6C5F6E5FB6E4C /* NearTx.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6C86AFDAF7412756294AD7B /* NearTx.swift */; };
 		8B1BDB373FE7A26F2D495AC6 /* SetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5ABF79C33EECBE16AAA1C6A /* SetupView.swift */; };
 		8E067494223A4D0EA74A6A7C /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE19020DA9BA56BD1E4048E7 /* AppModel.swift */; };
+		A35E1AF43F4853918E1D51B3 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7069D34A6BD4129EF909E45D /* OnboardingView.swift */; };
 		A6EA1235206DA6650A89E647 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 0C3785FA8F06EF729D5D1C2A /* Assets.xcassets */; };
 		AA33371EE3EBC2B26F999EC3 /* CardSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA3C1EEB8E68AE58EEC9A94A /* CardSession.swift */; };
 		B4B24BEAE2CBC240F2EFDF89 /* Components.swift in Sources */ = {isa = PBXBuildFile; fileRef = D58857A5B091DE9D6C347A76 /* Components.swift */; };
+		BBDBEF85367CB84C4D2506E5 /* Onboarding.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7F02405AE796074C5035116 /* Onboarding.swift */; };
 		BD4E8CD5D9E574BB0C02F241 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6224F2508219463A476F4257 /* APIClient.swift */; };
 		BDB1F894AEDAF1F111257D02 /* CardSetup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C10DB798C9C938FCF25587E /* CardSetup.swift */; };
 		C46D7738651B9D1D6BB02CE9 /* NFCCardTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E6BB654DA62E2574BB89833 /* NFCCardTransport.swift */; };
@@ -41,6 +43,7 @@
 		5A0B4A0A2F42F0D2C9573AD5 /* PinSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PinSheet.swift; sourceTree = "<group>"; };
 		6224F2508219463A476F4257 /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
 		6543983F4ADB99D25D46CC33 /* ApprovalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApprovalView.swift; sourceTree = "<group>"; };
+		7069D34A6BD4129EF909E45D /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		7D346F7BF7B6089D491B9C5F /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		87F539D4580D7F775FC93300 /* Config.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Config.swift; sourceTree = "<group>"; };
 		A90465596F11E00B3A6FE71D /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
@@ -49,11 +52,12 @@
 		AE19020DA9BA56BD1E4048E7 /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
 		B0240AAD89D350B17A738A24 /* CardSigner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardSigner.swift; sourceTree = "<group>"; };
 		B5ABF79C33EECBE16AAA1C6A /* SetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetupView.swift; sourceTree = "<group>"; };
+		C7F02405AE796074C5035116 /* Onboarding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Onboarding.swift; sourceTree = "<group>"; };
 		C858625A31EC8DBF4F481599 /* client-swift */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "client-swift"; path = "../../near-hackthon-applets/client-swift"; sourceTree = SOURCE_ROOT; };
 		CE113A673BAAAB13B1E42CF4 /* PendingListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PendingListView.swift; sourceTree = "<group>"; };
 		D58857A5B091DE9D6C347A76 /* Components.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components.swift; sourceTree = "<group>"; };
 		E5199774338319D9B717B1C7 /* Bip39.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bip39.swift; sourceTree = "<group>"; };
-		ECDE14C4DE3C82520CEDA14E /* KeyringAgent.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = KeyringAgent.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		ECDE14C4DE3C82520CEDA14E /* KeyringAgent.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = KeyringAgent.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F6C86AFDAF7412756294AD7B /* NearTx.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NearTx.swift; sourceTree = "<group>"; };
 		F766515D08866A29B70EB3B7 /* Bip39Words.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bip39Words.swift; sourceTree = "<group>"; };
 		F8C44CA16BC37B0C5D618546 /* Data+Hex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Data+Hex.swift"; sourceTree = "<group>"; };
@@ -85,6 +89,7 @@
 				336B0B7508B9CF7FF4EAC1C0 /* AccountPendingView.swift */,
 				6543983F4ADB99D25D46CC33 /* ApprovalView.swift */,
 				D58857A5B091DE9D6C347A76 /* Components.swift */,
+				7069D34A6BD4129EF909E45D /* OnboardingView.swift */,
 				CE113A673BAAAB13B1E42CF4 /* PendingListView.swift */,
 				5A0B4A0A2F42F0D2C9573AD5 /* PinSheet.swift */,
 				A90465596F11E00B3A6FE71D /* RootView.swift */,
@@ -100,6 +105,7 @@
 				E5199774338319D9B717B1C7 /* Bip39.swift */,
 				F766515D08866A29B70EB3B7 /* Bip39Words.swift */,
 				3C10DB798C9C938FCF25587E /* CardSetup.swift */,
+				C7F02405AE796074C5035116 /* Onboarding.swift */,
 			);
 			path = Setup;
 			sourceTree = "<group>";
@@ -174,6 +180,7 @@
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					0E3E40A60D7873DB8580A185 = {
+						DevelopmentTeam = "";
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -230,6 +237,8 @@
 				CCE545DB8618A9242E6ED0EC /* Models.swift in Sources */,
 				C46D7738651B9D1D6BB02CE9 /* NFCCardTransport.swift in Sources */,
 				639540F313B6C5F6E5FB6E4C /* NearTx.swift in Sources */,
+				BBDBEF85367CB84C4D2506E5 /* Onboarding.swift in Sources */,
+				A35E1AF43F4853918E1D51B3 /* OnboardingView.swift in Sources */,
 				FEB880A782FF469B2064B478 /* PendingListView.swift in Sources */,
 				1942FA6417EACDC02E6FED32 /* PinSheet.swift in Sources */,
 				1C7CF429E2406415C1AFF2A6 /* RootView.swift in Sources */,
@@ -305,7 +314,7 @@
 				CODE_SIGN_ENTITLEMENTS = KeyringAgent/KeyringAgent.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = VWU226A3V6;
+				DEVELOPMENT_TEAM = "";
 				INFOPLIST_FILE = KeyringAgent/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -329,7 +338,7 @@
 				CODE_SIGN_ENTITLEMENTS = KeyringAgent/KeyringAgent.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = VWU226A3V6;
+				DEVELOPMENT_TEAM = "";
 				INFOPLIST_FILE = KeyringAgent/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (

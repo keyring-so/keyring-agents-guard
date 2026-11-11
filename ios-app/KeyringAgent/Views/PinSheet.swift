@@ -3,11 +3,24 @@ import SwiftUI
 enum Decision: String, Identifiable {
     case approve
     case reject
+    case onboard
 
     var id: String { rawValue }
-    var tone: Color { self == .approve ? Palette.accent : Palette.danger }
-    var icon: String { self == .approve ? "checkmark.shield.fill" : "xmark.shield.fill" }
-    var title: String { self == .approve ? "Approve this payment" : "Reject this request" }
+    var tone: Color { self == .reject ? Palette.danger : Palette.accent }
+    var icon: String {
+        switch self {
+        case .approve: return "checkmark.shield.fill"
+        case .reject: return "xmark.shield.fill"
+        case .onboard: return "creditcard.fill"
+        }
+    }
+    var title: String {
+        switch self {
+        case .approve: return "Approve this payment"
+        case .reject: return "Reject this request"
+        case .onboard: return "Authorize setup"
+        }
+    }
 }
 
 /// Collects the card PIN before the NFC tap. The PIN stays in this view until it is handed to the signer.

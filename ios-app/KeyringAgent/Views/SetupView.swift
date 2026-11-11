@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// First-run setup. The app shows nothing else until the card is set up on this phone.
 struct SetupView: View {
@@ -173,9 +174,16 @@ struct SetupView: View {
                     VStack(spacing: 12) {
                         InfoRow(label: "Card ID", value: result.cardUid)
                         InfoRow(label: "Wallet ID", value: result.keyUid)
-                        InfoRow(label: "Public key", value: Self.short(result.publicKeyHex))
+                        InfoRow(label: "Public key", value: result.publicKeyHex)
                     }
                 }
+
+                Button("Copy public key") {
+                    if let result = setup.result {
+                        UIPasteboard.general.string = result.publicKeyHex
+                    }
+                }
+                .font(.subheadline)
             }
 
             Text("Next, this wallet gets a NEAR account, and the agent's approvals appear here.")
@@ -208,10 +216,6 @@ struct SetupView: View {
         .disabled(setup.working)
     }
 
-    private static func short(_ hex: String) -> String {
-        guard hex.count > 20 else { return hex }
-        return "\(hex.prefix(10))…\(hex.suffix(8))"
-    }
 }
 
 private struct StepRow: View {

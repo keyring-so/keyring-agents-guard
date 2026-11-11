@@ -39,32 +39,73 @@ final class AppModel: ObservableObject {
 
     var stage: Stage {
         guard let card else { return .needsCard }
-        guard let context else { return .loading }
-        return context.approverKeyHex.lowercased() == card.publicKeyHex.lowercased() ? .ready : .needsAccount
+        guard let account = card.accountId else { return .needsAccount }
+        guard let context else {
+            // A failed load before the account is linked still shows the card and its key.
+            return error == nil ? .loading : .needsAccount
+        }
+        return context.account == account
+            && context.approverKeyHex.lowercased() == card.publicKeyHex.lowercased()
+            ? .ready : .needsAccount
     }
 
     init() {
         let stored = UserDefaults.standard.string(forKey: Self.baseURLKey).flatMap(APIClient.normalize)
         let url = stored ?? AppConfig.apiBaseURL
         apiBaseURL = url
-        api = APIClient(baseURL: url)
+        var loadedCard: CardRecord?
         if let data = UserDefaults.standard.data(forKey: Self.cardKey) {
-            card = try? JSONDecoder().decode(CardRecord.self, from: data)
+            loadedCard = try? JSONDecoder().decode(CardRecord.self, from: data)
         }
+        card = loadedCard
+        api = APIClient(baseURL: url, account: loadedCard?.accountId)
     }
 
     func saveCard(_ result: CardSetupResult) {
-        let record = CardRecord(cardUid: result.cardUid, keyUid: result.keyUid, publicKeyHex: result.publicKeyHex)
+        let record = CardRecord(
+            cardUid: result.cardUid,
+            keyUid: result.keyUid,
+            publicKeyHex: result.publicKeyHex,
+            accountId: nil
+        )
+        persist(record)
+        card = record
+        api = APIClient(baseURL: apiBaseURL, account: nil)
+    }
+
+    /// Called after the sponsor creates the account and the card signs register + deposit.
+    func saveAccount(_ account: String) {
+        guard var record = card else { return }
+        record.accountId = account
+        persist(record)
+        card = record
+        api = APIClient(baseURL: apiBaseURL, account: account)
+        Task { await refresh() }
+    }
+
+    private func persist(_ record: CardRecord) {
         if let data = try? JSONEncoder().encode(record) {
             UserDefaults.standard.set(data, forKey: Self.cardKey)
         }
-        card = record
     }
 
     /// Forgets the card on this phone only. The card itself is not changed.
     func forgetCard() {
         UserDefaults.standard.removeObject(forKey: Self.cardKey)
         card = nil
+    }
+
+    /// Saves the server without probing it (used during onboarding, before an account exists).
+    @discardableResult
+    func setAPIBaseURL(_ raw: String) -> Bool {
+        guard let url = APIClient.normalize(raw) else {
+            error = "Enter a full URL such as http://192.168.1.20:8787"
+            return false
+        }
+        UserDefaults.standard.set(url.absoluteString, forKey: Self.baseURLKey)
+        apiBaseURL = url
+        api = APIClient(baseURL: url, account: card?.accountId)
+        return true
     }
 
     /// Validates, persists, and reconnects. Returns true when the server answers.
@@ -75,7 +116,7 @@ final class AppModel: ObservableObject {
         }
         UserDefaults.standard.set(url.absoluteString, forKey: Self.baseURLKey)
         apiBaseURL = url
-        api = APIClient(baseURL: url)
+        api = APIClient(baseURL: url, account: card?.accountId)
         error = nil
         await refresh()
         return error == nil
@@ -124,7 +165,7 @@ final class AppModel: ObservableObject {
         let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
         let id = components?.queryItems?.first(where: { $0.name == "id" })?.value
         let account = components?.queryItems?.first(where: { $0.name == "account" })?.value
-        if let account, account != AppConfig.account { return }
+        if let account, account != (card?.accountId ?? AppConfig.account) { return }
         guard let id else { return }
 
         if let spend = pending.first(where: { $0.id == id }) {
@@ -172,8 +213,8 @@ final class AppModel: ObservableObject {
                   routing.pending.receiverId == spend.receiverId,
                   routing.pending.amountYocto == spend.amountYocto,
                   routing.publicKey == context.approverKey,
-                  routing.signerId == AppConfig.account,
-                  routing.receiverId == AppConfig.account,
+                  routing.signerId == context.account,
+                  routing.receiverId == context.contractId,
                   let nonce = UInt64(routing.nonce)
             else {
                 throw Self.failure("The server returned data that does not match this request. Nothing was signed.")
@@ -181,14 +222,15 @@ final class AppModel: ObservableObject {
 
             // The app builds the transaction itself. The server supplied only the nonce and block hash.
             let tx = NearFunctionCallTx(
-                signerId: AppConfig.account,
+                signerId: context.account,
                 publicKeyHex: context.approverKeyHex,
                 nonce: nonce,
-                receiverId: AppConfig.account,
+                receiverId: context.contractId,
                 blockHashHex: routing.blockHashHex,
                 methodName: action,
                 argsJSON: try NearFunctionCallTx.args(forId: spend.id),
-                gasTGas: 30
+                gasTGas: 30,
+                depositYocto: "0"
             )
             let unsigned = try tx.unsignedBytes()
             let digest = try tx.digest()

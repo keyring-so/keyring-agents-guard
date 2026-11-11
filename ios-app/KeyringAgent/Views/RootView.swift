@@ -11,7 +11,11 @@ struct RootView: View {
         case .needsCard:
             SetupView()
         case .needsAccount:
-            AccountPendingView()
+            if let card = model.card {
+                OnboardingView(card: card, baseURL: model.apiBaseURL)
+            } else {
+                SetupView()
+            }
         case .ready:
             PendingListView()
         }

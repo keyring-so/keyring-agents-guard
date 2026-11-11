@@ -19,6 +19,7 @@ const inputs = {
   methodName: 'reject',
   id: '3',
   gasTGas: 30,
+  depositYocto: '1000000000000000000000000',
 };
 
 const publicKey = PublicKey.fromString(`secp256k1:${baseEncode(Buffer.from(publicKeyHex, 'hex'))}`);
@@ -27,7 +28,7 @@ const tx = createTransaction(
   publicKey,
   inputs.receiverId,
   BigInt(inputs.nonce),
-  [actionCreators.functionCall(inputs.methodName, { id: inputs.id }, BigInt(inputs.gasTGas) * 10n ** 12n, 0n)],
+  [actionCreators.functionCall(inputs.methodName, { id: inputs.id }, BigInt(inputs.gasTGas) * 10n ** 12n, BigInt(inputs.depositYocto))],
   Buffer.from(inputs.blockHashHex, 'hex'),
 );
 const unsigned = encodeTransaction(tx);

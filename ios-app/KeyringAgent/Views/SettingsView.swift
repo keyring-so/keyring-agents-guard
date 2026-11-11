@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct SettingsView: View {
     @EnvironmentObject private var model: AppModel
@@ -45,8 +46,15 @@ struct SettingsView: View {
             }
 
             Section("Account") {
-                InfoRow(label: "Account", value: AppConfig.account)
+                InfoRow(label: "Your account", value: model.card?.accountId ?? AppConfig.account)
+                InfoRow(label: "Policy contract", value: model.context?.contractId ?? "—")
                 InfoRow(label: "Connected to", value: model.apiBaseURL.absoluteString)
+                if let account = model.card?.accountId {
+                    Button("Copy account ID") {
+                        UIPasteboard.general.string = account
+                    }
+                    .font(.subheadline)
+                }
             }
 
             Section {

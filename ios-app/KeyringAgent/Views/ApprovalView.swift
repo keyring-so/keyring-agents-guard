@@ -25,7 +25,7 @@ struct ApprovalView: View {
                     SectionTitle(text: "What the card signs")
                     SurfaceCard {
                         VStack(spacing: 12) {
-                            InfoRow(label: "Contract", value: AppConfig.account)
+                            InfoRow(label: "Contract", value: model.context?.contractId ?? "—")
                             InfoRow(label: "Action", value: "Approve or reject request \(spend.id)")
                             InfoRow(label: "Deposit", value: "0 NEAR")
                             InfoRow(label: "Gas", value: "30 TGas")
@@ -120,6 +120,7 @@ struct ApprovalView: View {
         switch choice {
         case .approve: await model.approve(spend, pin: pin)
         case .reject: await model.reject(spend, pin: pin)
+        case .onboard: break
         }
     }
 }

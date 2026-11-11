@@ -30,7 +30,8 @@ do {
         blockHashHex: inputs["blockHashHex"] as? String ?? "",
         methodName: inputs["methodName"] as? String ?? "",
         argsJSON: try NearFunctionCallTx.args(forId: id),
-        gasTGas: UInt64(gas)
+        gasTGas: UInt64(gas),
+        depositYocto: inputs["depositYocto"] as? String ?? "0"
     )
 
     let unsigned = try tx.unsignedBytes().hex

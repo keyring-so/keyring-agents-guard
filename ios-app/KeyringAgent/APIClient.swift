@@ -23,6 +23,8 @@ private struct APIErrorBody: Decodable {
 struct APIClient {
     let baseURL: URL
     let token: String
+    /// The user's NEAR account. Sent as X-User-Account; the API is multi-user.
+    let account: String?
     private let session: URLSession
 
     /// Accepts "http(s)://host[:port]" with an optional trailing slash; anything else is rejected.
@@ -37,9 +39,10 @@ struct APIClient {
         return url
     }
 
-    init(baseURL: URL = AppConfig.apiBaseURL, token: String = AppConfig.apiToken) {
+    init(baseURL: URL = AppConfig.apiBaseURL, token: String = AppConfig.apiToken, account: String? = nil) {
         self.baseURL = baseURL
         self.token = token
+        self.account = account
         let configuration = URLSessionConfiguration.default
         configuration.timeoutIntervalForRequest = 20
         configuration.timeoutIntervalForResource = 60
@@ -70,6 +73,37 @@ struct APIClient {
         )
     }
 
+    /// Ask the sponsor to create a fresh account with the card key and the agent key.
+    func onboardSponsor(cardPublicKeyHex: String) async throws -> OnboardPrepare {
+        try await request(
+            path: "/api/onboard/sponsor",
+            method: "POST",
+            body: ["cardPublicKeyHex": cardPublicKeyHex]
+        )
+    }
+
+    /// Nonce, block hash, agent key, fee, and default policy for register/deposit.
+    func prepareOnboarding(account: String, cardPublicKeyHex: String) async throws -> OnboardPrepare {
+        try await request(
+            path: "/api/onboard/prepare",
+            method: "POST",
+            body: ["account": account, "cardPublicKeyHex": cardPublicKeyHex]
+        )
+    }
+
+    /// Relay a card-signed onboarding transaction.
+    func broadcast(unsignedTxBase64: String, signatureHex: String, publicKey: String) async throws -> SubmitResponse {
+        try await request(
+            path: "/api/broadcast",
+            method: "POST",
+            body: [
+                "unsignedTxBase64": unsignedTxBase64,
+                "signatureHex": signatureHex,
+                "publicKey": publicKey,
+            ]
+        )
+    }
+
     private func request<T: Decodable>(
         path: String,
         method: String = "GET",
@@ -83,6 +117,9 @@ struct APIClient {
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         if !token.isEmpty {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        if let account, !account.isEmpty {
+            request.setValue(account, forHTTPHeaderField: "X-User-Account")
         }
         if let body {
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
