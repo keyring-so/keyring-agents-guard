@@ -10,6 +10,22 @@ Gives any MCP-capable agent the **spending capability**, not the wallet keys.
 
 There is **no** approve, reject, withdraw, or set-policy tool. Those need the Keyring card.
 
+## Test the agent path
+
+This starts the MCP server over stdio and drives it like an agent: list tools, read budget,
+request a spend, read pending. It does not need OpenCode or Claude Code.
+
+```sh
+NEAR_ACCOUNT=<card account> POLICY_ACCOUNT=keyring-policy-1105.testnet \
+  node mcp/smoke.mjs
+
+# or choose the payment
+NEAR_ACCOUNT=<card account> node mcp/smoke.mjs testnet 0.1 "API credits"
+```
+
+The default is `0.2 NEAR` to `scam-wallet-1023.testnet`, which should return `pending` /
+`NotAllowlisted`. The app then shows the request; approve or reject with the card.
+
 ## Run
 
 From the repo root:
