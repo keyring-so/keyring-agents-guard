@@ -33,8 +33,37 @@ const tx = createTransaction(
 );
 const unsigned = encodeTransaction(tx);
 
+const agent = PublicKey.fromString('ed25519:6E8sCci9badyRkXb3JoRpBj5p8C6Tw41ELDZoiihKEtp');
+const addKeyInputs = {
+  signerId: inputs.signerId,
+  publicKeyHex,
+  nonce: inputs.nonce,
+  receiverId: inputs.receiverId,
+  blockHashHex: inputs.blockHashHex,
+  agentPublicKey: agent.toString(),
+  agentKeyHex: Buffer.from(agent.data).toString('hex'),
+  allowanceYocto: '250000000000000000000000',
+  contractId: 'keyring-policy-1105.testnet',
+  methods: ['request_spend'],
+};
+const addKeyTx = createTransaction(
+  addKeyInputs.signerId,
+  publicKey,
+  addKeyInputs.receiverId,
+  BigInt(addKeyInputs.nonce),
+  [actionCreators.addKey(agent, actionCreators.functionCallAccessKey(
+    addKeyInputs.contractId, addKeyInputs.methods, BigInt(addKeyInputs.allowanceYocto)))],
+  Buffer.from(addKeyInputs.blockHashHex, 'hex'),
+);
+const addKeyUnsigned = encodeTransaction(addKeyTx);
+
 console.log(JSON.stringify({
   inputs,
   expectedUnsignedHex: Buffer.from(unsigned).toString('hex'),
   expectedDigestHex: createHash('sha256').update(unsigned).digest('hex'),
+  addKey: {
+    inputs: addKeyInputs,
+    expectedUnsignedHex: Buffer.from(addKeyUnsigned).toString('hex'),
+    expectedDigestHex: createHash('sha256').update(addKeyUnsigned).digest('hex'),
+  },
 }, null, 2));

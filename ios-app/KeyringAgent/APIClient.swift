@@ -74,12 +74,10 @@ struct APIClient {
     }
 
     /// Ask the sponsor to create a fresh account with the card key and the agent key.
-    func onboardSponsor(cardPublicKeyHex: String) async throws -> OnboardPrepare {
-        try await request(
-            path: "/api/onboard/sponsor",
-            method: "POST",
-            body: ["cardPublicKeyHex": cardPublicKeyHex]
-        )
+    func onboardSponsor(cardPublicKeyHex: String, agentPublicKey: String? = nil) async throws -> OnboardPrepare {
+        var body = ["cardPublicKeyHex": cardPublicKeyHex]
+        if let agentPublicKey { body["agentPublicKey"] = agentPublicKey }
+        return try await request(path: "/api/onboard/sponsor", method: "POST", body: body)
     }
 
     /// Nonce, block hash, agent key, fee, and default policy for register/deposit.
@@ -89,6 +87,23 @@ struct APIClient {
             method: "POST",
             body: ["account": account, "cardPublicKeyHex": cardPublicKeyHex]
         )
+    }
+
+    func fetchPair(code: String) async throws -> Pairing {
+        try await request(path: "/api/pair/\(code)")
+    }
+
+    func completePair(code: String, account: String) async throws -> Pairing {
+        try await request(
+            path: "/api/pair/\(code)/complete",
+            method: "POST",
+            body: ["account": account]
+        )
+    }
+
+    /// Whether the agent key is on the account and bound on the hub.
+    func pairStatus(code: String, account: String) async throws -> PairStatus {
+        try await request(path: "/api/pair/\(code)/status?account=\(account)")
     }
 
     /// Relay a card-signed onboarding transaction.

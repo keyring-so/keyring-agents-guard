@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 60;
+	objectVersion = 54;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -16,6 +16,7 @@
 		4DE144DF379FBE86B5E9DB4E /* Data+Hex.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8C44CA16BC37B0C5D618546 /* Data+Hex.swift */; };
 		5367BF39F4FDA4C15948F928 /* KeyringAgentApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00A60408344FD9A58AA28D62 /* KeyringAgentApp.swift */; };
 		5B84173F41153E7AD0A0E3A4 /* Bip39Words.swift in Sources */ = {isa = PBXBuildFile; fileRef = F766515D08866A29B70EB3B7 /* Bip39Words.swift */; };
+		5D03236AFE7D74E49D2FC9DE /* PairAgentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE378E7C114752C37F48F0A0 /* PairAgentView.swift */; };
 		639540F313B6C5F6E5FB6E4C /* NearTx.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6C86AFDAF7412756294AD7B /* NearTx.swift */; };
 		8B1BDB373FE7A26F2D495AC6 /* SetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5ABF79C33EECBE16AAA1C6A /* SetupView.swift */; };
 		8E067494223A4D0EA74A6A7C /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE19020DA9BA56BD1E4048E7 /* AppModel.swift */; };
@@ -57,9 +58,10 @@
 		C7F02405AE796074C5035116 /* Onboarding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Onboarding.swift; sourceTree = "<group>"; };
 		C858625A31EC8DBF4F481599 /* client-swift */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "client-swift"; path = "../../near-hackthon-applets/client-swift"; sourceTree = SOURCE_ROOT; };
 		CE113A673BAAAB13B1E42CF4 /* PendingListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PendingListView.swift; sourceTree = "<group>"; };
+		CE378E7C114752C37F48F0A0 /* PairAgentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairAgentView.swift; sourceTree = "<group>"; };
 		D58857A5B091DE9D6C347A76 /* Components.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components.swift; sourceTree = "<group>"; };
 		E5199774338319D9B717B1C7 /* Bip39.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bip39.swift; sourceTree = "<group>"; };
-		ECDE14C4DE3C82520CEDA14E /* KeyringAgent.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = KeyringAgent.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		ECDE14C4DE3C82520CEDA14E /* KeyringAgent.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = KeyringAgent.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F6C86AFDAF7412756294AD7B /* NearTx.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NearTx.swift; sourceTree = "<group>"; };
 		F766515D08866A29B70EB3B7 /* Bip39Words.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bip39Words.swift; sourceTree = "<group>"; };
 		F8C44CA16BC37B0C5D618546 /* Data+Hex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Data+Hex.swift"; sourceTree = "<group>"; };
@@ -92,6 +94,7 @@
 				6543983F4ADB99D25D46CC33 /* ApprovalView.swift */,
 				D58857A5B091DE9D6C347A76 /* Components.swift */,
 				7069D34A6BD4129EF909E45D /* OnboardingView.swift */,
+				CE378E7C114752C37F48F0A0 /* PairAgentView.swift */,
 				CE113A673BAAAB13B1E42CF4 /* PendingListView.swift */,
 				5A0B4A0A2F42F0D2C9573AD5 /* PinSheet.swift */,
 				A90465596F11E00B3A6FE71D /* RootView.swift */,
@@ -183,6 +186,7 @@
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					0E3E40A60D7873DB8580A185 = {
+						DevelopmentTeam = "";
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -241,6 +245,7 @@
 				639540F313B6C5F6E5FB6E4C /* NearTx.swift in Sources */,
 				BBDBEF85367CB84C4D2506E5 /* Onboarding.swift in Sources */,
 				A35E1AF43F4853918E1D51B3 /* OnboardingView.swift in Sources */,
+				5D03236AFE7D74E49D2FC9DE /* PairAgentView.swift in Sources */,
 				FEB880A782FF469B2064B478 /* PendingListView.swift in Sources */,
 				1942FA6417EACDC02E6FED32 /* PinSheet.swift in Sources */,
 				1C7CF429E2406415C1AFF2A6 /* RootView.swift in Sources */,
@@ -317,7 +322,7 @@
 				CODE_SIGN_ENTITLEMENTS = KeyringAgent/KeyringAgent.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = VWU226A3V6;
+				DEVELOPMENT_TEAM = "";
 				INFOPLIST_FILE = KeyringAgent/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -341,7 +346,7 @@
 				CODE_SIGN_ENTITLEMENTS = KeyringAgent/KeyringAgent.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = VWU226A3V6;
+				DEVELOPMENT_TEAM = "";
 				INFOPLIST_FILE = KeyringAgent/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (

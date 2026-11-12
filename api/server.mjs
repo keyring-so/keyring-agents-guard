@@ -272,6 +272,111 @@ function cardKeyFromHex(hex) {
   return PublicKey.fromString(`secp256k1:${baseEncode(Buffer.from(hex, 'hex'))}`);
 }
 
+function defaultPolicy() {
+  return { per_tx_max: yocto('0.5'), daily_max: yocto('1'), allowlist: ['testnet'] };
+}
+
+/** Pairing sessions: an agent asks to be attached to a card account. */
+const pairs = new Map();
+
+function createPair(agentPublicKey) {
+  let parsed;
+  try {
+    parsed = PublicKey.fromString(agentPublicKey);
+  } catch {
+    throw httpError(400, 'agentPublicKey is invalid');
+  }
+  const code = randomBytes(3).toString('hex').toUpperCase();
+  const pair = {
+    code,
+    agentPublicKey,
+    agentKeyHex: Buffer.from(parsed.data).toString('hex'),
+    agentKeyType: agentPublicKey.startsWith('ed25519:') ? 0 : 1,
+    // Display-only: the hub's default policy for a new account. A paired agent cannot choose
+    // its own limits; the app shows what the account will actually have.
+    policy: defaultPolicy(),
+    createdAt: Date.now(),
+    account: null,
+    paired: false,
+  };
+  pairs.set(code, pair);
+  return { ...pair, url: `keyring-agent://pair?code=${code}`, contractId: POLICY_ACCOUNT };
+}
+
+function getPair(code) {
+  const pair = pairs.get(String(code).toUpperCase());
+  if (!pair) throw httpError(404, 'pairing code not found');
+  return pair;
+}
+
+/** True when an access key is a function-call key on the hub that may call request_spend. */
+function isSpendKey(accessKey) {
+  const permission = accessKey?.permission;
+  const functionCall = permission && typeof permission === 'object' ? permission.FunctionCall : null;
+  if (!functionCall || functionCall.receiver_id !== POLICY_ACCOUNT) return false;
+  return Array.isArray(functionCall.method_names) && functionCall.method_names.includes('request_spend');
+}
+
+async function readAccessKey(account, publicKey) {
+  try {
+    return await freshCall(() => rpc('query', {
+      request_type: 'view_access_key',
+      finality: 'optimistic',
+      account_id: account,
+      public_key: publicKey,
+    }));
+  } catch {
+    return null;
+  }
+}
+
+/** What the app still has to do: add the account key, set the hub agent key, or nothing. */
+async function pairKeyStatus(account, agentPublicKey) {
+  const accessKey = await readAccessKey(account, agentPublicKey);
+  const accountKey = Boolean(accessKey?.nonce) && isSpendKey(accessKey);
+  let agentKey = false;
+  try {
+    const user = await viewAt(POLICY_ACCOUNT, 'get_user', { account });
+    agentKey = user?.keys?.agent_key === agentPublicKey;
+  } catch {
+    agentKey = false;
+  }
+  return { account, accountKey, agentKey, ready: accountKey && agentKey };
+}
+
+async function completePair(code, account) {
+  if (!account) throw httpError(400, 'account is required');
+  const pair = getPair(code);
+  account = String(account);
+  if (pair.paired && pair.account === account) return pair;
+
+  // The app must have actually added this agent key to the account before the agent trusts
+  // the pairing. Otherwise a guessed code could point an agent at someone else's account.
+  let accessKey = null;
+  for (let attempt = 0; attempt < 12; attempt++) {
+    accessKey = await readAccessKey(account, pair.agentPublicKey);
+    if (accessKey?.nonce) break;
+    await new Promise((r) => setTimeout(r, 500));
+  }
+  if (!accessKey?.nonce) {
+    throw httpError(409, 'the agent key is not on that account; add it with the card first');
+  }
+  if (!isSpendKey(accessKey)) {
+    throw httpError(409, `the agent key must be a function-call key on ${POLICY_ACCOUNT} allowed to call request_spend`);
+  }
+
+  // The account key alone is not enough: the hub must also bind it as the agent key.
+  const status = await pairKeyStatus(account, pair.agentPublicKey);
+  if (!status.agentKey) {
+    throw httpError(409, 'the hub has not authorized this agent key yet; run set_agent_key');
+  }
+
+  pair.account = account;
+  pair.paired = true;
+  pair.completedAt = Date.now();
+  return pair;
+}
+
 /** What the app needs to sign register/deposit for a new user account. */
 async function prepareOnboarding(account, cardPublicKeyHex) {
   const publicKey = cardKeyFromHex(cardPublicKeyHex);
@@ -304,17 +409,22 @@ async function prepareOnboarding(account, cardPublicKeyHex) {
     agentKeyType: 0,
     registrationFeeYocto: yocto('0.01'),
     depositYocto: yocto('1'),
-    policy: { per_tx_max: yocto('0.5'), daily_max: yocto('1'), allowlist: ['testnet'] },
+    policy: defaultPolicy(),
   };
 }
 
 /** Create a fresh sub-account with the card key (full access) and the agent key (function call). */
-async function sponsorAccount(cardPublicKeyHex) {
+async function sponsorAccount(cardPublicKeyHex, agentPublicKey) {
   if (!/^[0-9a-fA-F]{128}$/.test(String(cardPublicKeyHex ?? ''))) {
     throw httpError(400, 'cardPublicKeyHex must be 64 bytes of hex');
   }
   const publicKey = cardKeyFromHex(cardPublicKeyHex);
-  const agent = hubAgent.publicKey();
+  let agent;
+  try {
+    agent = agentPublicKey ? PublicKey.fromString(agentPublicKey) : hubAgent.publicKey();
+  } catch {
+    throw httpError(400, 'agentPublicKey is invalid');
+  }
   const account = `u${randomBytes(5).toString('hex')}.${SPONSOR_ACCOUNT}`;
 
   const result = await sendAt(SPONSOR_ACCOUNT, card, [
@@ -325,7 +435,12 @@ async function sponsorAccount(cardPublicKeyHex) {
   ], account);
   if (!result.ok) throw httpError(502, `sponsor failed: ${JSON.stringify(result.failure)}`);
 
-  return prepareOnboarding(account, cardPublicKeyHex);
+  const prepared = await prepareOnboarding(account, cardPublicKeyHex);
+  return {
+    ...prepared,
+    agentKey: agent.toString(),
+    agentKeyHex: Buffer.from(agent.data).toString('hex'),
+  };
 }
 
 /** Assemble a signed transaction from the app's bytes and the card's r||s signature. */
@@ -471,7 +586,31 @@ async function route(req, res, url) {
   // Sponsor onboarding: create a fresh account with the card key and the agent key.
   if (req.method === 'POST' && url.pathname === '/api/onboard/sponsor') {
     const body = await readBody(req);
-    return sendJson(res, 200, await sponsorAccount(body.cardPublicKeyHex));
+    return sendJson(res, 200, await sponsorAccount(body.cardPublicKeyHex, body.agentPublicKey));
+  }
+
+  // Pairing: the agent asks for a code; the app completes it with the card account.
+  if (req.method === 'POST' && url.pathname === '/api/pair') {
+    const body = await readBody(req);
+    return sendJson(res, 200, createPair(String(body.agentPublicKey ?? '')));
+  }
+
+  if (req.method === 'GET' && url.pathname.startsWith('/api/pair/') && url.pathname.endsWith('/status')) {
+    const code = url.pathname.slice('/api/pair/'.length, -'/status'.length);
+    const pair = getPair(code);
+    const account = requireAccount(accountOf(req, url));
+    return sendJson(res, 200, await pairKeyStatus(account, pair.agentPublicKey));
+  }
+
+  if (req.method === 'POST' && url.pathname.startsWith('/api/pair/') && url.pathname.endsWith('/complete')) {
+    const code = url.pathname.slice('/api/pair/'.length, -'/complete'.length);
+    const body = await readBody(req);
+    return sendJson(res, 200, await completePair(code, body.account));
+  }
+
+  if (req.method === 'GET' && url.pathname.startsWith('/api/pair/')) {
+    const code = url.pathname.slice('/api/pair/'.length);
+    return sendJson(res, 200, getPair(code));
   }
 
   // What the app needs to sign register and deposit for a new account.

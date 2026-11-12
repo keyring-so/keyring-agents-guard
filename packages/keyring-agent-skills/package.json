@@ -1,0 +1,27 @@
+{
+  "name": "keyring-agent-skills",
+  "version": "0.1.0",
+  "description": "Install the Keyring spending capability into an MCP agent (OpenCode, Claude Code) and pair a card-controlled agent account.",
+  "type": "module",
+  "bin": {
+    "keyring-agent-skills": "./bin/cli.mjs"
+  },
+  "files": [
+    "bin",
+    "mcp",
+    "scripts",
+    "skills",
+    "README.md"
+  ],
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "@near-js/crypto": "^2.5.1",
+    "@near-js/transactions": "^2.5.1",
+    "@near-js/utils": "^2.5.1",
+    "@noble/curves": "^1.9.7",
+    "zod": "^4.6.7"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

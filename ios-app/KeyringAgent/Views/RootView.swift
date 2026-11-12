@@ -18,6 +18,11 @@ struct RootView: View {
             }
         case .ready:
             PendingListView()
+                .sheet(isPresented: $model.pairRequested) {
+                    NavigationStack {
+                        PairAgentView()
+                    }
+                }
         }
     }
 }

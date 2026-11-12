@@ -12,7 +12,9 @@ spending capability, not the wallet keys.
 There is **no** approve, reject, withdraw, or set-policy tool. The Keyring card is the approver;
 the phone app displays the decoded request. The contract enforces the same limits on-chain.
 
+- Agent onboarding: `npx keyring-agent-skills init` (agent key → pairing code → app pairs the card account → MCP config)
 - Setup and host configs: `mcp/README.md`
+- Installer source: `packages/keyring-agent-skills/`
 - Portable skill: `skills/keyring-agent/SKILL.md`
 - Smoke test: `NEAR_ACCOUNT=<card account> node mcp/smoke.mjs`
 - Approval UI: `ios-app/` (native iPhone + NFC card)

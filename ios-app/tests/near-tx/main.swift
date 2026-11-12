@@ -43,7 +43,37 @@ do {
     guard digest == expectedDigest else {
         fail("digest differs\n  app: \(digest)\n  sdk: \(expectedDigest)")
     }
-    print("PASS: \(unsigned.count / 2) bytes, digest \(digest)")
+    guard
+        let addKeyRoot = root["addKey"] as? [String: Any],
+        let addKeyInputs = addKeyRoot["inputs"] as? [String: Any],
+        let addKeyUnsignedExpected = addKeyRoot["expectedUnsignedHex"] as? String,
+        let addKeyDigestExpected = addKeyRoot["expectedDigestHex"] as? String,
+        let addKeyNonceText = addKeyInputs["nonce"] as? String,
+        let addKeyNonce = UInt64(addKeyNonceText),
+        let methods = addKeyInputs["methods"] as? [String]
+    else { fail("could not read addKey vector") }
+
+    let addKeyTx = NearAddKeyTx(
+        signerId: addKeyInputs["signerId"] as? String ?? "",
+        publicKeyHex: addKeyInputs["publicKeyHex"] as? String ?? "",
+        nonce: addKeyNonce,
+        receiverId: addKeyInputs["receiverId"] as? String ?? "",
+        blockHashHex: addKeyInputs["blockHashHex"] as? String ?? "",
+        newPublicKeyHex: addKeyInputs["agentKeyHex"] as? String ?? "",
+        allowanceYocto: addKeyInputs["allowanceYocto"] as? String ?? "0",
+        contractId: addKeyInputs["contractId"] as? String ?? "",
+        methods: methods
+    )
+    let addKeyUnsigned = try addKeyTx.unsignedBytes().hex
+    let addKeyDigest = try addKeyTx.digest().hex
+    guard addKeyUnsigned == addKeyUnsignedExpected else {
+        fail("addKey unsigned bytes differ\n  app: \(addKeyUnsigned)\n  sdk: \(addKeyUnsignedExpected)")
+    }
+    guard addKeyDigest == addKeyDigestExpected else {
+        fail("addKey digest differs\n  app: \(addKeyDigest)\n  sdk: \(addKeyDigestExpected)")
+    }
+
+    print("PASS: call \(unsigned.count / 2) bytes, addKey \(addKeyUnsigned.count / 2) bytes")
 } catch {
     fail(error.localizedDescription)
 }

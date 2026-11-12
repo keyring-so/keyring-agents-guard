@@ -70,6 +70,12 @@ struct SettingsView: View {
                 Text("Forgetting only removes the card from this phone. The card and its wallet are not changed.")
             }
 
+            Section("Agent") {
+                NavigationLink("Pair an agent") {
+                    PairAgentView()
+                }
+            }
+
             Section("Card reader") {
                 InfoRow(
                     label: "CA public key",

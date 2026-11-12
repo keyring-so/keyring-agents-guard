@@ -9,3 +9,6 @@ ios-app/DerivedData/
 ios-app/*.xcodeproj/xcuserdata/
 ios-app/*.xcodeproj/project.xcworkspace/xcuserdata/
 *.xcuserstate
+
+# agent pairing key and config
+.keyring/

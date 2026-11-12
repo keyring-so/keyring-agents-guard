@@ -14,7 +14,7 @@ card for a true first-run test, or keep the app installed.
 
 ## 1. New agent session (5 minutes)
 
-Prerequisites: API running, app installed, card linked, MCP server configured.
+Prerequisites: API running, app installed, card linked, agent paired (see 1b), MCP server configured.
 
 ```sh
 cd /Users/kaichaosun/github/web3/near-hackthon
@@ -40,6 +40,83 @@ Expected:
 
 The canonical skill is `skills/keyring-agent/SKILL.md`; `.opencode/skills/keyring-agent` is a symlink.
 `AGENTS.md` and `CLAUDE.md` carry the repo-level instructions. The MCP server is host-neutral.
+
+---
+
+## 1b. Pair an agent (the `npx` flow, 5 minutes)
+
+Prerequisites: API running (`POLICY_ACCOUNT` + `SPONSOR_ACCOUNT`), app installed, card linked.
+
+In a scratch repo (or this repo with `--force`):
+
+```sh
+mkdir /tmp/keyring-pair-test && cd /tmp/keyring-pair-test
+npx /Users/kaichaosun/github/web3/near-hackthon/packages/keyring-agent-skills init --agent print
+```
+
+Expected output:
+
+```
+agent key    /tmp/keyring-pair-test/.keyring/agent-key.json
+gitignore    added .keyring/
+agent        ed25519:…
+  Pairing code: 1A2B3C
+  Link:         keyring-agent://pair?code=1A2B3C
+  Waiting for approval…
+```
+
+1. Open the app → **Settings → Agent → Pair an agent** (or the first-run **Link account** screen,
+   which has the same field).
+2. Enter the code, tap **Load**.
+3. Expected: the agent's public key, "Permission: request_spend only", and the policy appear.
+4. Tap **Approve agent with card** → PIN → hold the card.
+5. The app signs and broadcasts `AddKey` + `set_agent_key`; then completes the pairing.
+6. Expected CLI output:
+
+```
+paired       u…keyring-sponsor-1105.testnet
+config       /tmp/keyring-pair-test/.keyring/config.json
+skill        /tmp/keyring-pair-test/.opencode/skills/keyring-agent/SKILL.md
+mcp          (OpenCode config, or printed JSON with --agent print)
+```
+
+7. Check the API verified the key before completing: completing a code with an account that does
+   not hold that key returns `409 the agent key is not on that account`.
+8. The agent key is function-call only:
+
+```sh
+near view-state <account>              # or the hub's get_user
+# expected: permission.FunctionCall receiver_id = keyring-policy-1105.testnet
+#           method_names = ["request_spend"]
+```
+
+9. Use the paired key with the packaged MCP server:
+
+```sh
+NEAR_ACCOUNT=<account> \
+POLICY_ACCOUNT=keyring-policy-1105.testnet \
+HUB_AGENT_KEY_FILE=/tmp/keyring-pair-test/.keyring/agent-key.json \
+node /Users/kaichaosun/github/web3/near-hackthon/mcp/server.mjs
+```
+
+Or from an approved agent session, on the **next** session after pairing:
+
+> init my keyring agent account
+
+Expected: the agent calls `budget` and reports the account, per-payment cap, daily budget, and
+remaining balance.
+
+### Agent-driven pairing (`--no-wait`)
+
+Install only the skill first (`npx keyring-agent-skills install`), start an agent session, and say
+**init my keyring agent account**. For agents that cannot block for minutes, the underlying
+commands are:
+
+```sh
+npx keyring-agent-skills init --no-wait --json   # { code, url, agentPublicKey }
+npx keyring-agent-skills finish --code 1A2B3C    # after the app shows paired
+npx keyring-agent-skills status                  # JSON: config + on-chain context
+```
 
 ---
 
@@ -70,20 +147,27 @@ SPONSOR_ACCOUNT=keyring-sponsor-1105.testnet \
 node api/server.mjs
 ```
 
-The new repo creates a new `.secrets/agent-hub-key.json` on first use. That's fine for a **new
-account**: the sponsor adds the new agent key during onboarding. Existing users keep their old
-agent keys.
+The new repo needs its own agent key. The product path:
 
-**If you are reusing an existing account in the new repo, copy the old key file:**
+```sh
+npx keyring-agent-skills init
+```
+
+Enter the code in the app and approve; the CLI writes `.keyring/config.json` and the MCP config.
+That is a **new agent key on the same account**, which is fine: the old key stays valid or can be
+removed with the card. Re-pairing rotates the hub's `agent_key`, so only the newest key can call
+`request_spend`.
+
+The repo-internal demo scripts also use `.secrets/agent-hub-key.json` (`.secrets/agent-key.json`
+for the original spike). If you reuse those scripts against an existing account, copy the matching
+key file:
 
 ```sh
 cp <old-repo>/.secrets/agent-hub-key.json <new-repo>/.secrets/agent-hub-key.json
 chmod 600 <new-repo>/.secrets/agent-hub-key.json
 ```
 
-Otherwise the new agent key is not an access key on the old account and spends fail. To rotate to
-a new agent key you must add it to the account with the card (full access) and call `set_agent_key`
-on the hub; that rotation flow is not in the app yet.
+Otherwise the script's key is not an access key on the old account and spends fail.
 
 Test:
 
@@ -114,18 +198,24 @@ This is the real user experience test.
 3. On the phone:
    - set the API server to `http://<mac-lan-ip>:8787`,
    - **Set up card**: check card → PIN → 12 words → tap to load the wallet,
-   - **Link account**: create account → PIN → tap (sponsor creates it; card signs `register` + `deposit`).
+   - **Link account**: optionally paste the pairing code from `npx keyring-agent-skills init`
+     (the agent key is created with the account), → PIN → tap (sponsor creates it; card signs
+     `register` + `deposit`).
 4. Expected: home screen; **Settings → Your account** shows `u…keyring-sponsor-1105.testnet`.
-5. Check the hub has one more user and the account's approver key is the card's public key.
-6. Run the agent:
+5. Check the hub has one more user, the approver key is the card's public key, and the agent key is
+   the one the CLI printed.
+6. Finish the pairing if you used the CLI: it writes config, skill, and MCP entry. Start a new agent
+   session and say **init my keyring agent account**; the agent reports the policy.
+7. Run the agent (paired key):
    ```sh
    NEAR_ACCOUNT=<new account> POLICY_ACCOUNT=keyring-policy-1105.testnet \
-     node mcp/smoke.mjs
+     HUB_AGENT_KEY_FILE=<repo>/.keyring/agent-key.json \
+     node mcp/smoke.mjs scam-wallet-1023.testnet 0.2 "poisoned invoice"
    ```
    Expected pending; app shows; reject with the card.
-7. Run a legit large payment (`0.8` to `testnet`): pending `OverTxLimit`; approve with the card.
-8. Wallet: receive address/QR; add 0.2 to spending; withdraw 0.2; each asks for PIN + card.
-9. Kill and relaunch the app: it should go straight to the home screen (card record + account persisted).
+8. Run a legit large payment (`0.8` to `testnet`): pending `OverTxLimit`; approve with the card.
+9. Wallet: receive address/QR; add 0.2 to spending; withdraw 0.2; each asks for PIN + card.
+10. Kill and relaunch the app: it should go straight to the home screen (card record + account persisted).
 
 ### Reusing an existing card
 
@@ -150,7 +240,12 @@ Keep the old words if you might need the old account.
 - [ ] Fresh app opens on **Set up your card**, not the home screen.
 - [ ] Card check → PIN → 12 words → tap succeeds.
 - [ ] Link account → sponsor creates `u…keyring-sponsor-1105.testnet`.
+- [ ] `npx keyring-agent-skills init` prints a code; the app accepts it and shows the agent key + policy.
+- [ ] Approving with the card adds a **function-call** agent key and calls `set_agent_key`.
+- [ ] CLI writes `.keyring/config.json`, installs the skill + MCP config, and gitignores `.keyring/`.
+- [ ] Completing a pairing for an account without that key fails with `409`.
 - [ ] Home shows the account; Settings copies the account ID.
+- [ ] New agent session + "init my keyring agent account" → `budget` reports the policy.
 - [ ] Agent `request_spend` inside policy → paid, no card.
 - [ ] Agent `request_spend` to `scam-wallet-1023.testnet` → pending, app shows.
 - [ ] Reject with card → pending empty; tx on explorer.
@@ -172,3 +267,6 @@ Keep the old words if you might need the old account.
 | Setup refuses card | Card already has a seed; use a fresh/factory-reset card or the restore flow |
 | Card certificate error | Card not personalized with the app's pinned test CA; run `personalizeCard` |
 | MCP tool not found | `opencode mcp list`; server path/env; restart the session |
+| `410/404 pairing code not found` | The API restarted (codes are in memory) or the code expired; run `init` again |
+| `409 the agent key is not on that account` | The app did not broadcast `AddKey` (card/PIN/network); re-pair and watch the app status |
+| Agent says NEAR_ACCOUNT is required | The MCP env was not written; run `npx keyring-agent-skills install` or check the config |

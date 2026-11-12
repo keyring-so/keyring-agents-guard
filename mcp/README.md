@@ -10,6 +10,30 @@ Gives any MCP-capable agent the **spending capability**, not the wallet keys.
 
 There is **no** approve, reject, withdraw, or set-policy tool. Those need the Keyring card.
 
+## Install (the normal path)
+
+Do not wire the server by hand. Run the installer in the repo where the agent works:
+
+```sh
+npx keyring-agent-skills init
+```
+
+It creates `.keyring/agent-key.json`, prints a pairing code, and waits. Enter the code in the app
+(**Pair agent**), approve with the card, and the CLI finishes:
+
+- writes `.keyring/config.json`
+- copies the skill to `.opencode/skills/keyring-agent/SKILL.md` (or `~/.claude/skills/` with `--agent claude`)
+- registers the MCP server (`opencode mcp add keyring …`, or `.mcp.json`)
+- adds `.keyring/` to `.gitignore`
+
+Agents that cannot block for minutes can split it:
+
+```sh
+npx keyring-agent-skills init --no-wait --json   # prints { code, url, agentPublicKey }
+npx keyring-agent-skills finish --code BFE04D    # after the app approves
+npx keyring-agent-skills status                  # account, policy, balance
+```
+
 ## Test the agent path
 
 This starts the MCP server over stdio and drives it like an agent: list tools, read budget,
@@ -33,6 +57,7 @@ From the repo root:
 ```sh
 NEAR_ACCOUNT=<card account> \
 POLICY_ACCOUNT=keyring-policy-1105.testnet \
+HUB_AGENT_KEY_FILE=.keyring/agent-key.json \
 node mcp/server.mjs
 ```
 
@@ -40,73 +65,64 @@ Environment:
 
 | Variable | Meaning |
 |---|---|
-| `NEAR_ACCOUNT` | The user's card-controlled NEAR account |
+| `NEAR_ACCOUNT` | The user's card-controlled NEAR account (required; no default) |
 | `POLICY_ACCOUNT` | The shared hub (default `keyring-policy-1105.testnet`) |
+| `HUB_AGENT_KEY_FILE` | The agent key file; defaults to `.secrets/agent-hub-key.json` (repo dev key) |
 | `API_URL` | Optional; default `http://127.0.0.1:8787` for the instant pending notification |
 
-The server signs `request_spend` with `.secrets/agent-hub-key.json`. That key is added to the
-user account by the sponsor with **only** the `request_spend` permission.
+The server signs `request_spend` with the key in `HUB_AGENT_KEY_FILE`. Pairing adds that key to the
+user account with **only** the `request_spend` permission; the card can remove it.
+
+## How pairing works
+
+1. The CLI asks the API for a pairing code bound to the agent's public key.
+2. The app loads the code, shows the agent key and policy, and the card signs:
+   - `AddKey` on the user account: ed25519, function-call only, `request_spend` on the hub,
+     small gas allowance.
+   - `set_agent_key` on the hub: binds it as the account's agent.
+3. The app completes the pairing. The API verifies on-chain that the key exists, is function-call
+   limited to the hub, may call `request_spend`, and is bound as the hub's `agent_key`; only then
+   does the CLI trust the account. A half-finished pairing can be resumed: the app checks which
+   half is missing and signs only that step.
+4. The CLI writes the config and installs the skill/MCP entry.
+
+Pairing codes live in the API's memory. An API restart invalidates outstanding codes; run `init`
+again.
 
 ## OpenCode
 
-Add the server to `opencode.jsonc`:
-
-```jsonc
-{
-  "$schema": "https://opencode.ai/config.json",
-  "mcp": {
-    "servers": {
-      "keyring": {
-        "type": "local",
-        "command": ["node", "/Users/kaichaosun/github/web3/near-hackthon/mcp/server.mjs"],
-        "cwd": "/Users/kaichaosun/github/web3/near-hackthon",
-        "environment": {
-          "NEAR_ACCOUNT": "<card account>",
-          "POLICY_ACCOUNT": "keyring-policy-1105.testnet",
-          "API_URL": "http://127.0.0.1:8787"
-        }
-      }
-    }
-  }
-}
-```
-
-Or from the CLI:
+The installer runs this for you; by hand it is:
 
 ```sh
 opencode mcp add keyring \
   --env NEAR_ACCOUNT=<card account> \
   --env POLICY_ACCOUNT=keyring-policy-1105.testnet \
-  -- node /Users/kaichaosun/github/web3/near-hackthon/mcp/server.mjs
+  --env HUB_AGENT_KEY_FILE=<repo>/.keyring/agent-key.json \
+  -- node <repo>/mcp/server.mjs
 ```
 
 OpenCode exposes the tools as `keyring_request_spend`, `keyring_pending`, `keyring_budget`.
 
-The project skill in `.opencode/skills/keyring-agent/SKILL.md` tells the agent when and how to use
-them. The skill is guidance; the contract is the enforcement.
-
 ## Claude Code
 
-`.mcp.json` in the project:
+The installer writes `.mcp.json` with `--agent claude`. By hand:
 
 ```json
 {
   "mcpServers": {
     "keyring": {
       "command": "node",
-      "args": ["/Users/kaichaosun/github/web3/near-hackthon/mcp/server.mjs"],
+      "args": ["<repo>/mcp/server.mjs"],
       "env": {
         "NEAR_ACCOUNT": "<card account>",
         "POLICY_ACCOUNT": "keyring-policy-1105.testnet",
+        "HUB_AGENT_KEY_FILE": "<repo>/.keyring/agent-key.json",
         "API_URL": "http://127.0.0.1:8787"
       }
     }
   }
 }
 ```
-
-Copy `.opencode/skills/keyring-agent/SKILL.md` to `~/.claude/skills/keyring-agent/SKILL.md` if you
-want Claude Code to discover the guidance as a skill.
 
 ## What the agent cannot do
 

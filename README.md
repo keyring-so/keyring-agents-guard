@@ -35,10 +35,10 @@ Agent ──request_spend──▶ NEAR policy contract
                                          approve / reject → contract
 ```
 
-The API is a message bus and transaction builder, not an authority:
+The API is a message bus, not an authority:
 
 - It reads the chain.
-- It builds the **unsigned** `approve`/`reject` transaction and returns its hash.
+- It returns the nonce, block hash, and contract for an approval; the **app builds and hashes** the transaction itself.
 - The app signs that hash with the card.
 - The API broadcasts the signed transaction. It never sees the card key or the PIN.
 
@@ -46,14 +46,65 @@ The API is a message bus and transaction builder, not an authority:
 
 | Path | What |
 |---|---|
-| `contract/` | Rust `near-sdk` spending-policy contract; 11 unit tests |
+| `contract/` | Rust `near-sdk` shared policy hub; 25 unit tests |
 | `scripts/` | Agent, card, and deploy scripts against testnet |
-| `api/` | Read-only API: pending queue, SSE, unsigned tx preparation, broadcast |
+| `api/` | Multi-user API: pairing, pending queue, unsigned tx preparation, broadcast |
 | `ios-app/` | Native SwiftUI + CoreNFC approval app using the Keyring card |
+| `mcp/` | Keyring MCP server exposed to any MCP agent |
+| `packages/keyring-agent-skills/` | `npx keyring-agent-skills` installer: agent key, pairing, skill + MCP config |
+| `skills/keyring-agent/` | Agent-agnostic skill (canonical) |
 | `docs/workflow.png` | Architecture diagram |
 | `spike/` | Original NEAR/card proof and command log |
 
 ## Quick start
+
+### Agent onboarding (the product flow)
+
+One command installs the capability, pairs the card account, and configures your agent:
+
+```sh
+npx keyring-agent-skills init
+# from this repo before publishing:
+# npx ./packages/keyring-agent-skills init
+```
+
+It creates the agent's ed25519 key, prints a pairing code, and waits:
+
+```
+  Pairing code: BFE04D
+  Link:         keyring-agent://pair?code=BFE04D
+```
+
+In the Keyring app, open **Pair agent** (Settings → Agent, or the first-run link screen) and enter
+the code. The app shows the agent's public key and policy; approve with the card PIN and a tap. The
+card signs two transactions:
+
+1. `AddKey` on your account — the agent key is **function-call only**, limited to `request_spend`
+   on the hub, with a small gas allowance.
+2. `set_agent_key` on the hub — binds that key as the account's agent.
+
+The CLI sees the pairing complete, writes `.keyring/config.json`, copies the skill into
+`.opencode/skills/keyring-agent/`, registers the MCP server, and adds `.keyring/` to `.gitignore`.
+Start a new agent session and say:
+
+> init my keyring agent account
+
+The agent calls `budget`, reports the account and policy, and is ready to pay. Agents other than
+OpenCode: `--agent claude` writes `.mcp.json` and `~/.claude/skills/`; `--agent both` writes both;
+`--agent print` prints the config to paste anywhere.
+
+To let the agent drive the pairing instead, install only the skill:
+
+```sh
+npx keyring-agent-skills install
+```
+
+Open a new agent session and say **init my keyring agent account**. The agent runs
+`init --no-wait --json`, shows you the code, waits while you approve in the app, then runs
+`finish --code <code>`. Start another session to load the tools.
+
+The agent key lives in `.keyring/agent-key.json` (mode 600, gitignored). The card key never leaves
+the card.
 
 ### 1. Contract
 
@@ -62,7 +113,7 @@ cd contract
 cargo test
 ```
 
-The live testnet account is `keyring-spike-1023.testnet`. See `spike/COMMANDS.md` for deploys and transaction hashes.
+The live shared hub is `keyring-policy-1105.testnet`. See `spike/COMMANDS.md` for deploys and transaction hashes.
 
 ### 2. API
 
@@ -95,9 +146,9 @@ open KeyringAgent.xcodeproj
 
 See `ios-app/README.md` for the card CA key, entitlement, and device notes. To prepare a dev card (install the applet, store its certificate), see `docs/card-setup.md`.
 
-### 4. Agent
+### 4. Repo-internal scripts (development)
 
-The agent acts for one user, so it needs that account:
+The agent scripts act for one user, so they need that account:
 
 ```sh
 export NEAR_ACCOUNT=<card account>
@@ -118,20 +169,24 @@ the API verifies it on-chain. The app polls, so the demo works without the notif
 | Prompt-injected agent tries an over-limit payment | Contract holds it; `OverTxLimit` / `NotAllowlisted` |
 | Agent key stolen, tries a plain transfer | NEAR rejects it: `RequiresFullAccess` |
 | Agent key stolen, tries `approve` or `set_policy` | NEAR rejects it: `MethodNameMismatch` |
+| Guessed pairing code points an agent at another account | Pairing completes only after the API verifies that key is on-chain, function-call limited to the hub, and bound as the hub's agent key |
+| User is tricked into approving an attacker's pairing code | The app shows the key and policy; card approval is the consent gate. Codes live in memory and expire with the API; compare the code with the CLI |
 | Agent floods the pending queue | `MAX_PENDING = 32` (add expiry/pause next) |
 | Malicious memo shown in the app | Rendered as untrusted text; amount/receiver come from contract state |
-| API compromised | It can lie about the request, but the card still signs with the account's approver key; consider a scoped approval key for production |
+| API compromised | It can lie about the request, but the app rebuilds the transaction and the card signs with the account's approver key; consider a scoped approval key for production |
 
 ## Known limitations / next
 
-- The API builds the unsigned transaction. For production, use a card-derived **function-call approval key** limited to `approve`/`reject`/`set_policy`, or build the transaction on-device.
-- No APNs push yet; the app polls while active and supports deep links (`keyring-agent://approve?account=…&id=…`). Add universal links and APNs next.
+- Pairing sessions are in memory; an API restart invalidates outstanding codes (re-run `init`).
+- No APNs push yet; the app polls while active and supports deep links (`keyring-agent://approve?...` and `keyring-agent://pair?code=...`). Add universal links and APNs next.
 - The app pins the applet's **test CA** public key. Replace it with the production CA for a production-personalized card.
 - The app depends on the private `KeyringCardClient` Swift package at `../near-hackthon-applets/client-swift`; it is not published. Replace it with the published client for a public build.
 - Contract pause/expiry/`reject_all` are the next hardening step.
 
 ## Status
 
-- Contract tests: 11/11 passing.
-- Testnet code hash matches the local wasm.
+- Contract tests: 25/25 passing.
+- Testnet code hash matches the local wasm for `keyring-policy-1105.testnet`.
 - Reject path verified end-to-end: API prepare → card-format signature → broadcast → `spend_rejected` on testnet.
+- Agent onboarding verified end-to-end with the software card: agent key → pairing code → `AddKey` + `set_agent_key` → CLI config → packaged MCP pays inside the policy.
+- The app's pairing screens build and are encoded against the NEAR SDK (`AddKey` golden vector); hardware NFC test is the remaining step.

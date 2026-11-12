@@ -75,7 +75,27 @@ struct CardRecord: Codable, Equatable {
     var accountId: String?
 }
 
-struct OnboardPolicy: Codable {
+struct Pairing: Codable, Equatable {
+    let code: String
+    let agentPublicKey: String
+    let agentKeyHex: String
+    let agentKeyType: Int
+    let policy: OnboardPolicy
+    let paired: Bool
+    let account: String?
+    let contractId: String?
+    let url: String?
+}
+
+/// Which half of a pairing already exists on-chain.
+struct PairStatus: Codable, Equatable {
+    let account: String
+    let accountKey: Bool
+    let agentKey: Bool
+    let ready: Bool
+}
+
+struct OnboardPolicy: Codable, Equatable {
     let per_tx_max: String
     let daily_max: String
     let allowlist: [String]

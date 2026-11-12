@@ -69,7 +69,73 @@ struct NearFunctionCallTx {
     }
 }
 
-/// Converts a human NEAR amount ("0.5") to a yoctoNEAR decimal string.
+/// A NEAR transaction whose single action is `AddKey`: give the agent an ed25519 function-call key
+/// limited to `request_spend` on the hub.
+struct NearAddKeyTx {
+    let signerId: String
+    let publicKeyHex: String   // card key, 64 bytes
+    let nonce: UInt64
+    let receiverId: String     // the user account (self)
+    let blockHashHex: String
+    let newPublicKeyHex: String // agent ed25519 key, 32 bytes
+    let allowanceYocto: String
+    let contractId: String
+    let methods: [String]
+
+    enum BuildError: LocalizedError {
+        case invalidPublicKey
+        case invalidBlockHash
+        case invalidAgentKey
+
+        var errorDescription: String? {
+            switch self {
+            case .invalidPublicKey: return "The card's public key is malformed."
+            case .invalidBlockHash: return "The block hash is malformed."
+            case .invalidAgentKey: return "The agent's public key is malformed."
+            }
+        }
+    }
+
+    func unsignedBytes() throws -> Data {
+        guard let publicKey = Data(hex: publicKeyHex), publicKey.count == 64 else {
+            throw BuildError.invalidPublicKey
+        }
+        guard let blockHash = Data(hex: blockHashHex), blockHash.count == 32 else {
+            throw BuildError.invalidBlockHash
+        }
+        guard let newKey = Data(hex: newPublicKeyHex), newKey.count == 32 else {
+            throw BuildError.invalidAgentKey
+        }
+
+        var out = Data()
+        out.appendBorshString(signerId)
+        out.append(1)                              // PublicKey::Secp256k1
+        out.append(publicKey)
+        out.appendUInt64(nonce)
+        out.appendBorshString(receiverId)
+        out.append(blockHash)
+        out.appendUInt32(1)                        // actions: one item
+        out.append(5)                              // Action::AddKey
+        out.append(0)                              // PublicKey::Ed25519
+        out.append(newKey)
+        out.appendUInt64(0)                        // access key nonce
+        out.append(0)                              // AccessKeyPermission::FunctionCall
+        out.append(1)                              // allowance: Some
+        out.appendU128Decimal(allowanceYocto)
+        out.appendBorshString(contractId)
+        out.appendUInt32(UInt32(methods.count))
+        for method in methods {
+            out.appendBorshString(method)
+        }
+        return out
+    }
+
+    func digest() throws -> Data {
+        Data(SHA256.hash(data: try unsignedBytes()))
+    }
+}
+
+/// Converts a human NEAR amount ("0.5") to a yoctoNEAR decimal string, and back.
 enum NearAmount {
     static func yocto(_ near: String) -> String? {
         let trimmed = near.trimmingCharacters(in: .whitespaces)
@@ -81,6 +147,17 @@ enum NearAmount {
         let digits = String(whole) + frac
         let stripped = digits.drop { $0 == "0" }
         return stripped.isEmpty ? "0" : String(stripped)
+    }
+
+    /// Formats a yoctoNEAR decimal string as NEAR, e.g. 500000000000000000000000 → 0.5.
+    static func near(_ yocto: String) -> String {
+        let digits = yocto.filter(\.isNumber)
+        guard !digits.isEmpty else { return yocto }
+        let padded = String(repeating: "0", count: max(0, 25 - digits.count)) + digits
+        let whole = String(padded.dropLast(24))
+        var fraction = String(padded.suffix(24))
+        while fraction.last == "0" { fraction.removeLast() }
+        return fraction.isEmpty ? whole : "\(whole).\(fraction)"
     }
 }
 

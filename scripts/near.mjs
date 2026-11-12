@@ -27,7 +27,7 @@ export const SPONSOR_ACCOUNT = process.env.SPONSOR_ACCOUNT ?? 'keyring-sponsor-1
 export const RPC = process.env.NEAR_RPC ?? 'https://test.rpc.fastnear.com';
 export const APPLETS_DIR = process.env.APPLETS_DIR ?? path.resolve(root, '../near-hackthon-applets');
 export const AGENT_KEY_FILE = path.join(root, '.secrets', 'agent-key.json');
-export const HUB_AGENT_KEY_FILE = path.join(root, '.secrets', 'agent-hub-key.json');
+export const HUB_AGENT_KEY_FILE = process.env.HUB_AGENT_KEY_FILE ?? path.join(root, '.secrets', 'agent-hub-key.json');
 export const WASM = path.join(root, 'contract/target/near/spend_policy.wasm');
 
 const KEY_TYPE = { ED25519: 0, SECP256K1: 1 };

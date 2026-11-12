@@ -21,7 +21,7 @@ final class OnboardingModel: ObservableObject {
         api = APIClient(baseURL: url)
     }
 
-    func link(pin: String) async {
+    func link(pin: String, pairing: Pairing?) async {
         guard CardSession.isAvailable else {
             error = "NFC is not available. Use a physical iPhone with NFC enabled."
             return
@@ -42,7 +42,10 @@ final class OnboardingModel: ObservableObject {
 
         do {
             status = "Creating your NEAR account…"
-            let prepared = try await api.onboardSponsor(cardPublicKeyHex: card.publicKeyHex)
+            let prepared = try await api.onboardSponsor(
+                cardPublicKeyHex: card.publicKeyHex,
+                agentPublicKey: pairing?.agentPublicKey
+            )
             guard prepared.account == prepared.signerId,
                   let nonce = UInt64(prepared.nonce)
             else {
@@ -51,7 +54,7 @@ final class OnboardingModel: ObservableObject {
 
             let registerArgs = try JSONSerialization.data(withJSONObject: [
                 "approver_key": prepared.publicKey,
-                "agent_key": prepared.agentKey,
+                "agent_key": pairing?.agentPublicKey ?? prepared.agentKey,
                 "policy": [
                     "per_tx_max": prepared.policy.per_tx_max,
                     "daily_max": prepared.policy.daily_max,

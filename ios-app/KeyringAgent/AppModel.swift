@@ -20,6 +20,9 @@ final class AppModel: ObservableObject {
     @Published var path: [PendingSpend] = []
     @Published var error: String?
     @Published var phase: SigningPhase = .idle
+    @Published var pairing: Pairing?
+    /// True when a `keyring-agent://pair?code=…` link opened the app while it was ready.
+    @Published var pairRequested = false
     @Published private(set) var card: CardRecord?
 
     @Published private(set) var apiBaseURL: URL
@@ -163,6 +166,17 @@ final class AppModel: ObservableObject {
     func handle(url: URL) {
         guard url.scheme == AppConfig.urlScheme || url.scheme == "https" else { return }
         let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
+
+        if url.host == "pair" {
+            if let code = components?.queryItems?.first(where: { $0.name == "code" })?.value {
+                Task {
+                    await loadPairing(code)
+                    if pairing != nil { pairRequested = true }
+                }
+            }
+            return
+        }
+
         let id = components?.queryItems?.first(where: { $0.name == "id" })?.value
         let account = components?.queryItems?.first(where: { $0.name == "account" })?.value
         if let account, account != (card?.accountId ?? AppConfig.account) { return }
@@ -183,6 +197,41 @@ final class AppModel: ObservableObject {
     func resetPhase() {
         guard !phase.isWorking else { return }
         phase = .idle
+    }
+
+    func loadPairing(_ code: String) async {
+        do {
+            pairing = try await api.fetchPair(code: code.trimmingCharacters(in: .whitespacesAndNewlines).uppercased())
+            error = nil
+        } catch {
+            self.error = AppModel.friendly(error)
+        }
+    }
+
+    func completePair(_ account: String) async throws {
+        guard let code = pairing?.code else { return }
+        var lastError: Error?
+        for _ in 0..<3 {
+            do {
+                pairing = try await api.completePair(code: code, account: account)
+                return
+            } catch let error as APIError {
+                // 409 means the agent key is not on the account yet; retrying will not help.
+                if case .http(409, _) = error { throw error }
+                lastError = error
+            } catch {
+                lastError = error
+            }
+            try? await Task.sleep(for: .seconds(2))
+        }
+        throw lastError ?? Self.failure("Pairing did not complete.")
+    }
+
+    func pairStatus(_ account: String) async throws -> PairStatus {
+        guard let code = pairing?.code else {
+            throw Self.failure("Load a pairing code first.")
+        }
+        return try await api.pairStatus(code: code, account: account)
     }
 
     /// Nonce, block hash, and approver key for a card-signed wallet action.
