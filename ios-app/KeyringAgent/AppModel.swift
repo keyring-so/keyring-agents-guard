@@ -185,6 +185,19 @@ final class AppModel: ObservableObject {
         phase = .idle
     }
 
+    /// Nonce, block hash, and approver key for a card-signed wallet action.
+    func prepareWallet() async throws -> OnboardPrepare {
+        guard let card, let account = card.accountId else {
+            throw Self.failure("The card is not linked to an account yet.")
+        }
+        return try await api.prepareOnboarding(account: account, cardPublicKeyHex: card.publicKeyHex)
+    }
+
+    /// Relay a card-signed deposit/withdraw transaction.
+    func submitWallet(unsignedTxBase64: String, signatureHex: String) async throws -> SubmitResponse {
+        try await api.submit(unsignedTxBase64: unsignedTxBase64, signatureHex: signatureHex)
+    }
+
     func approve(_ spend: PendingSpend, pin: String) async {
         await sign(action: "approve", spend: spend, pin: pin)
     }

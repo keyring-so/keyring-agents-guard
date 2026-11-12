@@ -167,6 +167,9 @@ async function context(account) {
     throw err;
   }
   const pending = await pendingList(account);
+  const accountState = await cachedCall(`account:${account}`, 3000, () => rpc('query', {
+    request_type: 'view_account', finality: 'final', account_id: account,
+  }));
   const approver = PublicKey.fromString(user.keys.approver_key);
   return {
     account,
@@ -182,6 +185,7 @@ async function context(account) {
       remainingTodayNear: formatNear(user.budget.remaining_today),
     },
     balanceNear: formatNear(user.balance),
+    accountBalanceNear: formatNear(accountState.amount),
     paused: user.paused,
     approverKey: user.keys.approver_key,
     approverKeyHex: Buffer.from(approver.data).toString('hex'),

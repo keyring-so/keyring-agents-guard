@@ -8,9 +8,11 @@
     "card": "node scripts/card.mjs"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2",
     "@near-js/crypto": "^2.5.1",
     "@near-js/transactions": "^2.5.1",
     "@near-js/utils": "^2.5.1",
-    "@noble/curves": "^1.9.7"
+    "@noble/curves": "^1.9.7",
+    "zod": "^4.6.7"
   }
 }

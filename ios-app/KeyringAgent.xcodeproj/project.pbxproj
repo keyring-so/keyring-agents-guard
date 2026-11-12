@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 54;
+	objectVersion = 60;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -31,6 +31,7 @@
 		D6383232F8BE4EF2CD4ECD0E /* KeyringCardClient in Frameworks */ = {isa = PBXBuildFile; productRef = A640D706B4D1827C6181F211 /* KeyringCardClient */; };
 		D7276281428DC4A0C94BE8FD /* Bip39.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5199774338319D9B717B1C7 /* Bip39.swift */; };
 		EDB478AC1025C5135F2D7F77 /* Config.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87F539D4580D7F775FC93300 /* Config.swift */; };
+		F72BB9541D06051BBBDE9CF5 /* WalletView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 340F03158EB0A7BB8BC05A7A /* WalletView.swift */; };
 		FEB880A782FF469B2064B478 /* PendingListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE113A673BAAAB13B1E42CF4 /* PendingListView.swift */; };
 /* End PBXBuildFile section */
 
@@ -38,6 +39,7 @@
 		00A60408344FD9A58AA28D62 /* KeyringAgentApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyringAgentApp.swift; sourceTree = "<group>"; };
 		0C3785FA8F06EF729D5D1C2A /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		336B0B7508B9CF7FF4EAC1C0 /* AccountPendingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountPendingView.swift; sourceTree = "<group>"; };
+		340F03158EB0A7BB8BC05A7A /* WalletView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WalletView.swift; sourceTree = "<group>"; };
 		3C10DB798C9C938FCF25587E /* CardSetup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardSetup.swift; sourceTree = "<group>"; };
 		4E6BB654DA62E2574BB89833 /* NFCCardTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NFCCardTransport.swift; sourceTree = "<group>"; };
 		5A0B4A0A2F42F0D2C9573AD5 /* PinSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PinSheet.swift; sourceTree = "<group>"; };
@@ -57,7 +59,7 @@
 		CE113A673BAAAB13B1E42CF4 /* PendingListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PendingListView.swift; sourceTree = "<group>"; };
 		D58857A5B091DE9D6C347A76 /* Components.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components.swift; sourceTree = "<group>"; };
 		E5199774338319D9B717B1C7 /* Bip39.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bip39.swift; sourceTree = "<group>"; };
-		ECDE14C4DE3C82520CEDA14E /* KeyringAgent.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = KeyringAgent.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		ECDE14C4DE3C82520CEDA14E /* KeyringAgent.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = KeyringAgent.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F6C86AFDAF7412756294AD7B /* NearTx.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NearTx.swift; sourceTree = "<group>"; };
 		F766515D08866A29B70EB3B7 /* Bip39Words.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bip39Words.swift; sourceTree = "<group>"; };
 		F8C44CA16BC37B0C5D618546 /* Data+Hex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Data+Hex.swift"; sourceTree = "<group>"; };
@@ -95,6 +97,7 @@
 				A90465596F11E00B3A6FE71D /* RootView.swift */,
 				7D346F7BF7B6089D491B9C5F /* SettingsView.swift */,
 				B5ABF79C33EECBE16AAA1C6A /* SetupView.swift */,
+				340F03158EB0A7BB8BC05A7A /* WalletView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -180,7 +183,6 @@
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					0E3E40A60D7873DB8580A185 = {
-						DevelopmentTeam = "";
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -244,6 +246,7 @@
 				1C7CF429E2406415C1AFF2A6 /* RootView.swift in Sources */,
 				2D27CB6D42BECFACFEDDEACC /* SettingsView.swift in Sources */,
 				8B1BDB373FE7A26F2D495AC6 /* SetupView.swift in Sources */,
+				F72BB9541D06051BBBDE9CF5 /* WalletView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -314,7 +317,7 @@
 				CODE_SIGN_ENTITLEMENTS = KeyringAgent/KeyringAgent.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = VWU226A3V6;
 				INFOPLIST_FILE = KeyringAgent/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -338,7 +341,7 @@
 				CODE_SIGN_ENTITLEMENTS = KeyringAgent/KeyringAgent.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = VWU226A3V6;
 				INFOPLIST_FILE = KeyringAgent/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (

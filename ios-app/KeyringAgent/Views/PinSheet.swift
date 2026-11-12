@@ -4,6 +4,7 @@ enum Decision: String, Identifiable {
     case approve
     case reject
     case onboard
+    case wallet
 
     var id: String { rawValue }
     var tone: Color { self == .reject ? Palette.danger : Palette.accent }
@@ -12,6 +13,7 @@ enum Decision: String, Identifiable {
         case .approve: return "checkmark.shield.fill"
         case .reject: return "xmark.shield.fill"
         case .onboard: return "creditcard.fill"
+        case .wallet: return "arrow.left.arrow.right"
         }
     }
     var title: String {
@@ -19,6 +21,7 @@ enum Decision: String, Identifiable {
         case .approve: return "Approve this payment"
         case .reject: return "Reject this request"
         case .onboard: return "Authorize setup"
+        case .wallet: return "Authorize wallet transfer"
         }
     }
 }

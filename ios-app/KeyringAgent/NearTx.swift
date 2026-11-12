@@ -69,6 +69,21 @@ struct NearFunctionCallTx {
     }
 }
 
+/// Converts a human NEAR amount ("0.5") to a yoctoNEAR decimal string.
+enum NearAmount {
+    static func yocto(_ near: String) -> String? {
+        let trimmed = near.trimmingCharacters(in: .whitespaces)
+        let parts = trimmed.split(separator: ".", maxSplits: 1, omittingEmptySubsequences: false)
+        guard let whole = parts.first, !whole.isEmpty, whole.allSatisfy(\.isNumber) else { return nil }
+        let fracRaw = parts.count > 1 ? String(parts[1]) : ""
+        guard fracRaw.allSatisfy(\.isNumber) else { return nil }
+        let frac = String(fracRaw.prefix(24)).padding(toLength: 24, withPad: "0", startingAt: 0)
+        let digits = String(whole) + frac
+        let stripped = digits.drop { $0 == "0" }
+        return stripped.isEmpty ? "0" : String(stripped)
+    }
+}
+
 private extension Data {
     mutating func appendUInt32(_ value: UInt32) {
         var le = value.littleEndian

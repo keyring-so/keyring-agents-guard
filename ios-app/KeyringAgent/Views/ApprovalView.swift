@@ -120,7 +120,7 @@ struct ApprovalView: View {
         switch choice {
         case .approve: await model.approve(spend, pin: pin)
         case .reject: await model.reject(spend, pin: pin)
-        case .onboard: break
+        case .onboard, .wallet: break
         }
     }
 }

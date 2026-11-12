@@ -18,6 +18,7 @@ struct AccountContext: Codable, Equatable {
     let policy: Policy
     let budget: Budget
     let balanceNear: String
+    let accountBalanceNear: String
     let paused: Bool
     let approverKey: String
     let approverKeyHex: String

@@ -36,6 +36,13 @@ struct PendingListView: View {
             .refreshable { await model.refresh() }
             .navigationTitle("Keyring")
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    NavigationLink {
+                        WalletView()
+                    } label: {
+                        Image(systemName: "wallet.pass")
+                    }
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     NavigationLink {
                         SettingsView()
