@@ -6,6 +6,11 @@
 import { actionCreators } from '@near-js/transactions';
 import { ACCOUNT, hubAgent, POLICY_ACCOUNT, print, sendAt, viewAt, yocto } from './near.mjs';
 
+if (!ACCOUNT) {
+  console.error('NEAR_ACCOUNT is required (the card-controlled user account)');
+  process.exit(2);
+}
+
 const [cmd, ...args] = process.argv.slice(2);
 const TGAS = 10n ** 12n;
 const API_URL = process.env.API_URL ?? 'http://127.0.0.1:8787';

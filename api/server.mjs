@@ -8,8 +8,8 @@
 //   node api/server.mjs
 //   API_PORT=8787 API_HOST=0.0.0.0 API_TOKEN=dev-token node api/server.mjs
 //
-// The agent can POST /api/agent/notify { "id": "3" } after a pending spend; the server
-// verifies the id on-chain before it broadcasts anything to clients.
+// The agent can POST /api/agent/notify { "id": "3", "account": "…" } after a pending spend; the
+// server verifies the id on-chain. The app polls; identities are per-request via X-User-Account.
 
 import http from 'node:http';
 import { createHash, randomBytes } from 'node:crypto';
@@ -18,7 +18,7 @@ import { PublicKey } from '@near-js/crypto';
 import { baseDecode, baseEncode } from '@near-js/utils';
 import { secp256k1 } from '@noble/curves/secp256k1';
 import {
-  ACCOUNT, POLICY_ACCOUNT, SPONSOR_ACCOUNT, RPC,
+  POLICY_ACCOUNT, SPONSOR_ACCOUNT, RPC,
   card, hubAgent, rpc, sendAt, viewAt, yocto,
 } from '../scripts/near.mjs';
 
@@ -27,10 +27,6 @@ const { createAccount, addKey, fullAccessKey, functionCallAccessKey, transfer } 
 const PORT = Number(process.env.API_PORT ?? 8787);
 const HOST = process.env.API_HOST ?? '0.0.0.0';
 const TOKEN = process.env.API_TOKEN ?? '';
-/** pending ids already announced to SSE clients */
-const announced = new Set();
-/** SSE clients: { res, timer } */
-const clients = new Set();
 
 // ---------------------------------------------------------------------------------------------
 // Helpers
@@ -77,9 +73,15 @@ function freshCall(fn) {
   return fn();
 }
 
-/** The user account this request is for. The iOS app sends X-User-Account. */
+/** The user account this request is for. The client sends X-User-Account. */
 function accountOf(req, url) {
-  return String(req.headers['x-user-account'] ?? url.searchParams.get('account') ?? ACCOUNT);
+  const value = req.headers['x-user-account'] ?? url.searchParams.get('account');
+  return value ? String(value) : null;
+}
+
+function requireAccount(account) {
+  if (!account) throw httpError(400, 'X-User-Account header is required');
+  return account;
 }
 
 /** A user's hub entry. */
@@ -140,17 +142,6 @@ function readBody(req, limit = 64 * 1024) {
     });
     req.on('error', reject);
   });
-}
-
-function broadcast(event, data) {
-  const frame = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
-  for (const client of clients) {
-    try {
-      client.res.write(frame);
-    } catch {
-      clients.delete(client);
-    }
-  }
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -425,7 +416,7 @@ async function route(req, res, url) {
   }
 
   if (url.pathname === '/health') {
-    return sendJson(res, 200, { ok: true, account: ACCOUNT, contract: POLICY_ACCOUNT, sponsor: SPONSOR_ACCOUNT, rpc: RPC, rpcCalls });
+    return sendJson(res, 200, { ok: true, contract: POLICY_ACCOUNT, sponsor: SPONSOR_ACCOUNT, rpc: RPC, rpcCalls });
   }
 
   if (!authorized(req, url)) {
@@ -435,44 +426,28 @@ async function route(req, res, url) {
   const account = accountOf(req, url);
 
   if (req.method === 'GET' && url.pathname === '/api/context') {
-    return sendJson(res, 200, await context(account));
+    return sendJson(res, 200, await context(requireAccount(account)));
   }
 
   if (req.method === 'GET' && url.pathname === '/api/pending') {
-    return sendJson(res, 200, { account, contract: POLICY_ACCOUNT, pending: await pendingList(account) });
+    const user = requireAccount(account);
+    return sendJson(res, 200, { account: user, contract: POLICY_ACCOUNT, pending: await pendingList(user) });
   }
 
   if (req.method === 'GET' && url.pathname.startsWith('/api/pending/')) {
     const id = decodeURIComponent(url.pathname.slice('/api/pending/'.length));
-    const item = (await pendingList(account)).find((p) => p.id === id);
+    const item = (await pendingList(requireAccount(account))).find((p) => p.id === id);
     if (!item) return sendJson(res, 404, { error: `pending spend ${id} not found` });
     return sendJson(res, 200, item);
-  }
-
-  // Server-Sent Events: a new pending spend, or a snapshot on connect.
-  if (req.method === 'GET' && url.pathname === '/api/events') {
-    res.writeHead(200, {
-      'content-type': 'text/event-stream',
-      'cache-control': 'no-store',
-      connection: 'keep-alive',
-      'access-control-allow-origin': '*',
-    });
-    res.write(`event: snapshot\ndata: ${JSON.stringify(await pendingList(account))}\n\n`);
-    const client = { res };
-    clients.add(client);
-    req.on('close', () => clients.delete(client));
-    return;
   }
 
   // The agent's hint. The server verifies against the chain before broadcasting.
   if (req.method === 'POST' && url.pathname === '/api/agent/notify') {
     const body = await readBody(req);
     if (body.id === undefined) return sendJson(res, 400, { error: 'id is required' });
-    const notifyAccount = String(body.account ?? account);
-    const item = (await pendingList(notifyAccount, { fresh: true })).find((p) => p.id === String(body.id));
+    if (!body.account) return sendJson(res, 400, { error: 'account is required' });
+    const item = (await pendingList(String(body.account), { fresh: true })).find((p) => p.id === String(body.id));
     if (!item) return sendJson(res, 404, { error: `pending spend ${body.id} not found` });
-    announced.add(item.id);
-    broadcast('pending', item);
     return sendJson(res, 200, { ok: true, pending: item });
   }
 
@@ -480,7 +455,7 @@ async function route(req, res, url) {
   if (req.method === 'POST' && url.pathname.startsWith('/api/tx/prepare/')) {
     const [action, id] = url.pathname.slice('/api/tx/prepare/'.length).split('/');
     if (!action || id === undefined) return sendJson(res, 404, { error: 'not found' });
-    return sendJson(res, 200, await prepareTx(account, action, id));
+    return sendJson(res, 200, await prepareTx(requireAccount(account), action, id));
   }
 
   // Routing: relays the app's signed transaction to the network.
@@ -489,7 +464,7 @@ async function route(req, res, url) {
     if (!body.unsignedTxBase64 || !body.signatureHex) {
       return sendJson(res, 400, { error: 'unsignedTxBase64 and signatureHex are required' });
     }
-    return sendJson(res, 200, await submitTx(account, body.unsignedTxBase64, body.signatureHex));
+    return sendJson(res, 200, await submitTx(requireAccount(account), body.unsignedTxBase64, body.signatureHex));
   }
 
 
@@ -520,22 +495,6 @@ async function route(req, res, url) {
   return sendJson(res, 404, { error: 'not found' });
 }
 
-// ---------------------------------------------------------------------------------------------
-// One poller for every connected client: at most one chain read per tick, none while idle.
-setInterval(async () => {
-  if (clients.size === 0) return;
-  try {
-    for (const item of await pendingList(ACCOUNT)) {
-      if (!announced.has(item.id)) {
-        announced.add(item.id);
-        broadcast('pending', item);
-      }
-    }
-  } catch {
-    // Keep serving; the next tick retries.
-  }
-}, 5000);
-
 // Boot
 
 const server = http.createServer((req, res) => {
@@ -548,19 +507,9 @@ const server = http.createServer((req, res) => {
   });
 });
 
-async function seed() {
-  try {
-    const list = await pendingList(ACCOUNT);
-    for (const item of list) announced.add(item.id);
-  } catch (err) {
-    console.warn(`[api] could not seed pending list: ${err.message}`);
-  }
-}
-
 await ensureSponsor();
-await seed();
 server.listen(PORT, HOST, () => {
   console.log(`[api] listening on http://${HOST}:${PORT}`);
-  console.log(`[api] default account ${ACCOUNT}, hub ${POLICY_ACCOUNT}, sponsor ${SPONSOR_ACCOUNT}`);
+  console.log(`[api] hub ${POLICY_ACCOUNT}, sponsor ${SPONSOR_ACCOUNT}`);
   if (TOKEN) console.log('[api] API_TOKEN is set; clients must send Authorization: Bearer <token>');
 });

@@ -10,6 +10,11 @@
 import { actionCreators } from '@near-js/transactions';
 import { ACCOUNT, card, POLICY_ACCOUNT, print, sendAt, viewAt } from './near.mjs';
 
+if (!ACCOUNT) {
+  console.error('NEAR_ACCOUNT is required (the card-controlled user account)');
+  process.exit(2);
+}
+
 const [cmd, id] = process.argv.slice(2);
 const TGAS = 10n ** 12n;
 

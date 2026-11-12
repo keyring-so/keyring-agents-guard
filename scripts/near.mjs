@@ -13,10 +13,15 @@ import { secp256k1 } from '@noble/curves/secp256k1';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
-/** The user account: holds the keys, pays gas, owns the policy entry. */
-export const ACCOUNT = process.env.NEAR_ACCOUNT ?? 'keyring-spike-1023.testnet';
+/** The user account: holds the keys, pays gas, owns the policy entry. Required where a script acts as one user. */
+export const ACCOUNT = process.env.NEAR_ACCOUNT ?? null;
+
+export function userAccount() {
+  if (!ACCOUNT) throw new Error('NEAR_ACCOUNT is required');
+  return ACCOUNT;
+}
 /** The shared policy contract: one deployment for every user. */
-export const POLICY_ACCOUNT = process.env.POLICY_ACCOUNT ?? ACCOUNT;
+export const POLICY_ACCOUNT = process.env.POLICY_ACCOUNT ?? 'keyring-policy-1105.testnet';
 /** The account that creates and funds new user accounts (testnet sponsor). */
 export const SPONSOR_ACCOUNT = process.env.SPONSOR_ACCOUNT ?? 'keyring-sponsor-1105.testnet';
 export const RPC = process.env.NEAR_RPC ?? 'https://test.rpc.fastnear.com';
@@ -120,8 +125,8 @@ export async function sendAt(account, signer, actions, receiver = account) {
 }
 
 /** The common case: the user account. */
-export async function send(signer, actions, receiver = ACCOUNT) {
-  return sendAt(ACCOUNT, signer, actions, receiver);
+export async function send(signer, actions, receiver = userAccount()) {
+  return sendAt(userAccount(), signer, actions, receiver);
 }
 
 function summarize(result) {

@@ -1,16 +1,23 @@
 # Keyring Agent API
 
-Read-only chain access + unsigned transaction builder for the iOS approval app.
+Shared backend for the iOS approval app and the agent/MCP path. It reads the shared policy hub and
+routes card-signed transactions. It never holds a card key, the agent key, or the PIN.
 
-It never holds the card key, the agent key, or the PIN.
+**The API is multi-user.** It does not have a global user account. Every user request carries the
+user's account in the `X-User-Account` header (or `?account=`). The agent/MCP process has its own
+`NEAR_ACCOUNT` because the agent signs for that specific user; the API does not.
 
 ## Run
 
 From the repo root (dependencies come from the root `node_modules`):
 
 ```sh
+POLICY_ACCOUNT=keyring-policy-1105.testnet \
+SPONSOR_ACCOUNT=keyring-sponsor-1105.testnet \
 node api/server.mjs
 ```
+
+No `NEAR_ACCOUNT` is needed for the API itself.
 
 Environment:
 
@@ -19,26 +26,40 @@ Environment:
 | `API_PORT` | `8787` | Listen port |
 | `API_HOST` | `0.0.0.0` | Bind address (LAN devices can reach it) |
 | `API_TOKEN` | empty | If set, clients must send `Authorization: Bearer <token>` |
-| `NEAR_ACCOUNT` | `keyring-spike-1023.testnet` | Policy contract account |
+| `POLICY_ACCOUNT` | `keyring-policy-1105.testnet` in practice | Shared policy hub |
+| `SPONSOR_ACCOUNT` | `keyring-sponsor-1105.testnet` in practice | Account that creates user accounts |
 | `NEAR_RPC` | `https://test.rpc.fastnear.com` | RPC endpoint |
+
+## User identity
+
+```http
+X-User-Account: u1a2b3c4d5.keyring-sponsor-1105.testnet
+```
+
+Every user endpoint below requires it. Missing → `400 X-User-Account header is required`.
+This is why the app can point at one API and different cards/users can coexist.
 
 ## Endpoints
 
 ### `GET /health`
 
 ```json
-{ "ok": true, "account": "keyring-spike-1023.testnet" }
+{ "ok": true, "contract": "keyring-policy-1105.testnet", "sponsor": "keyring-sponsor-1105.testnet" }
 ```
 
 ### `GET /api/context`
 
-Returns the account, policy, budget, approver key, agent key, and pending count.
+Requires `X-User-Account`. Returns the user's policy, budget, hub balance, account balance, approver
+key, agent key, and pending count.
 
 ### `GET /api/pending`
 
+Requires `X-User-Account`.
+
 ```json
 {
-  "account": "keyring-spike-1023.testnet",
+  "account": "u1a2b3c4d5.keyring-sponsor-1105.testnet",
+  "contract": "keyring-policy-1105.testnet",
   "pending": [
     {
       "id": "3",
@@ -55,65 +76,67 @@ Returns the account, policy, budget, approver key, agent key, and pending count.
 
 ### `GET /api/pending/:id`
 
-One pending request, normalized for the app.
-
-### `GET /api/events`
-
-Server-Sent Events. Sends a `snapshot` on connect and a `pending` event for each new id.
-
-```sh
-curl -N http://127.0.0.1:8787/api/events
-```
+Requires `X-User-Account`. One normalized pending request.
 
 ### `POST /api/agent/notify`
 
-The agent can hit this after a held spend. The server verifies the id on-chain before broadcasting.
+The agent's latency hint. It verifies the id on-chain for that user; it does not broadcast to other
+users. The app polls.
 
 ```sh
 curl -X POST http://127.0.0.1:8787/api/agent/notify \
   -H 'content-type: application/json' \
-  -d '{"id":"3"}'
+  -d '{"id":"3","account":"u1a2b3c4d5.keyring-sponsor-1105.testnet"}'
 ```
 
-### `POST /api/tx/approve/:id` or `POST /api/tx/reject/:id`
+### `POST /api/tx/prepare/:action/:id`
 
-Builds the unsigned transaction and returns its hash. The transaction is stored for 5 minutes.
-
-```json
-{
-  "txId": "…",
-  "hashHex": "…",
-  "action": "approve",
-  "id": "3",
-  "pending": { "…": "…" },
-  "expiresAt": 1793766454557,
-  "signer": "secp256k1:…"
-}
-```
-
-The iOS app signs `hashHex` with the card.
+Requires `X-User-Account`. `action` is `approve` or `reject`. Returns the nonce, block hash, hub, and
+approver key. The app builds the transaction itself.
 
 ### `POST /api/tx/submit`
 
+Requires `X-User-Account`.
+
 ```json
-{ "txId": "…", "signatureHex": "<64-byte r‖s hex>" }
+{ "unsignedTxBase64": "…", "signatureHex": "<64-byte r‖s hex>" }
 ```
 
-The API recovers the recovery id from the signature and the approver key, assembles `r‖s‖v`, broadcasts, and returns:
+The API checks the signature against that user's hub approver key, assembles `r‖s‖v`, and broadcasts.
+
+### `POST /api/onboard/sponsor`
 
 ```json
-{
-  "ok": true,
-  "hash": "5cBH2dEP…",
-  "explorer": "https://testnet.nearblocks.io/txns/5cBH2dEP…",
-  "failure": null,
-  "events": [{ "standard": "spend_policy", "event": "spend_rejected", "…": "…" }]
-}
+{ "cardPublicKeyHex": "<64-byte card public key hex>" }
+```
+
+The sponsor creates a fresh sub-account with the card key as full access, the agent key as
+function-call, and 2 testnet NEAR. Returns the onboarding data.
+
+### `POST /api/onboard/prepare`
+
+```json
+{ "account": "u…keyring-sponsor-1105.testnet", "cardPublicKeyHex": "…" }
+```
+
+Returns the nonce, block hash, agent key, registration fee, and default policy for the card to sign
+`register` and `deposit`.
+
+### `POST /api/broadcast`
+
+Relays a card-signed onboarding/wallet transaction from the app.
+
+```json
+{ "unsignedTxBase64": "…", "signatureHex": "…", "publicKey": "secp256k1:…" }
 ```
 
 ## Security notes
 
-- The API is a **notifier and transaction builder**, not an authority. The app fetches and displays the request; the card signs.
-- It has no secret keys. It reads public chain state and broadcasts the signature the app returns.
-- It builds the transaction. A compromised API could try to build a different transaction; the app checks that the returned pending id/receiver/amount match what it displayed. For production, use a card-derived **function-call approval key** limited to `approve`/`reject`/`set_policy` so the network rejects anything else.
+- The API has **no global user account**. It cannot serve user A's data to user B unless the header
+  says so; the hub contract also keys everything by the user's account.
+- The shared SSE stream was removed: it could broadcast one user's pending to another. The app polls;
+  for push, add a per-account stream or a notification service.
+- The API is a router. It builds no transactions for approvals; the app builds and signs them, and the
+  API only checks the signature against the user's approver key.
+- The agent key signs `request_spend` only. The API cannot approve, reject, withdraw, or change policy.
 - `API_TOKEN` is a simple shared secret for the LAN demo. Use TLS and real auth for production.

@@ -22,6 +22,11 @@ import * as z from 'zod/v4';
 import { actionCreators } from '@near-js/transactions';
 import { ACCOUNT, POLICY_ACCOUNT, hubAgent, sendAt, viewAt, yocto } from '../scripts/near.mjs';
 
+if (!ACCOUNT) {
+  console.error('NEAR_ACCOUNT is required (the card-controlled user account)');
+  process.exit(2);
+}
+
 const API_URL = process.env.API_URL ?? 'http://127.0.0.1:8787';
 const TGAS = 10n ** 12n;
 

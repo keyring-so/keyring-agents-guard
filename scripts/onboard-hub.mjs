@@ -16,6 +16,11 @@ import {
   ACCOUNT, card, hubAgent, POLICY_ACCOUNT, print, sendAt, viewAt, yocto,
 } from './near.mjs';
 
+if (!ACCOUNT) {
+  console.error('NEAR_ACCOUNT is required (the card-controlled user account)');
+  process.exit(2);
+}
+
 const { addKey, functionCall, functionCallAccessKey } = actionCreators;
 const TGAS = 10n ** 12n;
 const APPROVAL_METHODS = [

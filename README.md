@@ -69,13 +69,16 @@ The live testnet account is `keyring-spike-1023.testnet`. See `spike/COMMANDS.md
 From the repo root (it uses the root `node_modules`):
 
 ```sh
+POLICY_ACCOUNT=keyring-policy-1105.testnet \
+SPONSOR_ACCOUNT=keyring-sponsor-1105.testnet \
 node api/server.mjs
-# or: API_PORT=8787 API_TOKEN=dev-token node api/server.mjs
 ```
 
+The API is multi-user and needs no user account. Send the user's account per request:
+
 ```sh
-curl http://127.0.0.1:8787/api/context
-curl http://127.0.0.1:8787/api/pending
+curl -H 'X-User-Account: <card account>' http://127.0.0.1:8787/api/context
+curl -H 'X-User-Account: <card account>' http://127.0.0.1:8787/api/pending
 ```
 
 ### 3. iOS app
@@ -94,13 +97,19 @@ See `ios-app/README.md` for the card CA key, entitlement, and device notes. To p
 
 ### 4. Agent
 
+The agent acts for one user, so it needs that account:
+
 ```sh
-node scripts/agent.mjs spend vendor-a.testnet 0.1 "API credits"   # paid
-node scripts/agent.mjs spend scam-wallet-1023.testnet 0.2 "poisoned invoice"  # pending
+export NEAR_ACCOUNT=<card account>
+export POLICY_ACCOUNT=keyring-policy-1105.testnet
+
+node scripts/agent.mjs spend vendor-a.testnet 0.1 "API credits"              # paid
+node scripts/agent.mjs spend scam-wallet-1023.testnet 0.2 "poisoned invoice" # pending
 node scripts/agent.mjs budget
 ```
 
-If `API_URL` is reachable, `agent.mjs` posts the pending id to `/api/agent/notify`; the API verifies it on-chain before notifying clients. The app also polls, so the demo works without the notification.
+If `API_URL` is reachable, `agent.mjs` posts the pending id and account to `/api/agent/notify`;
+the API verifies it on-chain. The app polls, so the demo works without the notification.
 
 ## Security model
 

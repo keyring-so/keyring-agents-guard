@@ -9,6 +9,11 @@ import { parseArgs } from 'node:util';
 import { actionCreators } from '@near-js/transactions';
 import { ACCOUNT, agent, card, print, send, WASM, yocto } from './near.mjs';
 
+if (!ACCOUNT) {
+  console.error('NEAR_ACCOUNT is required (the card-controlled user account)');
+  process.exit(2);
+}
+
 const { values: opts } = parseArgs({
   options: {
     'per-tx': { type: 'string', default: '0.5' },
