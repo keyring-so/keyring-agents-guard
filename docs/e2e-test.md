@@ -17,7 +17,7 @@ card for a true first-run test, or keep the app installed.
 Prerequisites: API running, app installed, card linked, agent paired (see 1b), MCP server configured.
 
 ```sh
-cd /Users/kaichaosun/github/web3/near-hackthon
+cd keyring-agents-guard
 
 # 1. confirm the agent-side capability
 NEAR_ACCOUNT=<card account> POLICY_ACCOUNT=keyring-policy-1105.testnet \
@@ -51,7 +51,7 @@ In a scratch repo (or this repo with `--force`):
 
 ```sh
 mkdir /tmp/keyring-pair-test && cd /tmp/keyring-pair-test
-npx /Users/kaichaosun/github/web3/near-hackthon/packages/keyring-agent-skills init --agent print
+npx ./packages/keyring-agent-skills init --agent print
 ```
 
 Expected output:
@@ -96,7 +96,7 @@ near view-state <account>              # or the hub's get_user
 NEAR_ACCOUNT=<account> \
 POLICY_ACCOUNT=keyring-policy-1105.testnet \
 HUB_AGENT_KEY_FILE=/tmp/keyring-pair-test/.keyring/agent-key.json \
-node /Users/kaichaosun/github/web3/near-hackthon/mcp/server.mjs
+node ./mcp/server.mjs
 ```
 
 Or from an approved agent session, on the **next** session after pairing:
@@ -124,8 +124,8 @@ npx keyring-agent-skills status                  # JSON: config + on-chain conte
 
 ```sh
 # clone/copy the repo next to the private applet repo
-git clone <near-hackthon-url> near-hackthon
-cd near-hackthon
+git clone <keyring-agents-guard-url> keyring-agents-guard
+cd keyring-agents-guard
 
 npm install
 (cd contract && cargo test)          # 25 pass

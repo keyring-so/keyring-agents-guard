@@ -3,7 +3,7 @@ name = "spend-policy"
 description = "Spending policy for an AI agent: limits on-chain, anything else waits for the Keyring card"
 version = "0.1.0"
 edition = "2021"
-repository = "https://github.com/kaichaosun/near-hackthon"
+repository = "https://github.com/keyring-so/keyring-agents-guard"
 
 [lib]
 crate-type = ["cdylib", "rlib"]

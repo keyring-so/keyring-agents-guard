@@ -5,7 +5,7 @@
 import { createRequire } from 'node:module';
 import path from 'node:path';
 
-const ref = process.env.BIP39_REF ?? '/Users/kaichaosun/github/keyring-so/keyring-mobile';
+const ref = process.env.BIP39_REF ?? '';
 const require = createRequire(path.join(ref, 'package.json'));
 const { entropyToMnemonic, mnemonicToSeedSync } = require('@scure/bip39');
 const { wordlist } = require('@scure/bip39/wordlists/english');
