@@ -265,6 +265,10 @@ final class AppModel: ObservableObject {
             phase = .failed("Account details are not loaded yet. Pull to refresh and try again.")
             return
         }
+        guard pending.contains(where: { $0.id == spend.id }) else {
+            phase = .failed("This request was already handled. Pull to refresh.")
+            return
+        }
 
         do {
             phase = .working("Preparing")
@@ -336,6 +340,28 @@ final class AppModel: ObservableObject {
         }
         if text.hasPrefix("API ") {
             return "The Keyring API returned an error. Check Settings and try again."
+        }
+        if text.localizedCaseInsensitiveContains("no such pending spend") {
+            return "This request was already handled. Pull to refresh."
+        }
+        if text.localizedCaseInsensitiveContains("InvalidNonce") {
+            return "The request expired before the card signed. Pull to refresh and try again."
+        }
+        if text.localizedCaseInsensitiveContains("not approver") {
+            return "This card is not the approver for this account."
+        }
+        if text.localizedCaseInsensitiveContains("NotEnoughBalance")
+            || text.localizedCaseInsensitiveContains("insufficient balance") {
+            return "The spending balance is too low. Add funds and try again."
+        }
+        if text.localizedCaseInsensitiveContains("OverDailyLimit") {
+            return "This exceeds today's spending budget."
+        }
+        if text.localizedCaseInsensitiveContains("paused") {
+            return "Spending is paused on the hub. Unpause with the card first."
+        }
+        if text.localizedCaseInsensitiveContains("not registered") {
+            return "This account is not registered with the policy hub."
         }
         return text
     }

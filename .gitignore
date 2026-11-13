@@ -12,3 +12,4 @@ ios-app/*.xcodeproj/project.xcworkspace/xcuserdata/
 
 # agent pairing key and config
 .keyring/
+near-demo/

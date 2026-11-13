@@ -125,6 +125,11 @@ function installMcp(account, contractId) {
   if (AGENT === 'print') return;
 
   if (AGENT === 'opencode' || AGENT === 'both') {
+    // OpenCode only loads project config from a git worktree; without .git the entry is ignored.
+    if (!fs.existsSync(path.join(cwd, '.git'))) {
+      console.log('warn         no .git in this directory; OpenCode only loads project config in a repo.');
+      console.log('             run `git init` here, then `npx keyring-agent-skills install` again.');
+    }
     const result = spawnSync('opencode', [
       'mcp', 'add', 'keyring',
       '--env', `NEAR_ACCOUNT=${account}`,

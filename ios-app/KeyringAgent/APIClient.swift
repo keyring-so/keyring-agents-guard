@@ -4,14 +4,16 @@ enum APIError: LocalizedError {
     case invalidURL
     case invalidResponse
     case http(Int, String)
-    case decoding(Error)
+    case decoding(Error, String)
 
     var errorDescription: String? {
         switch self {
         case .invalidURL: return "Invalid API URL."
         case .invalidResponse: return "The API returned an invalid response."
         case let .http(code, message): return "API \(code): \(message)"
-        case let .decoding(error): return "Could not read the API response: \(error.localizedDescription)"
+        case let .decoding(error, body):
+            let suffix = body.isEmpty ? "" : " — server said: \(body)"
+            return "Could not read the API response: \(error.localizedDescription)\(suffix)"
         }
     }
 }
@@ -154,7 +156,8 @@ struct APIClient {
         do {
             return try JSONDecoder().decode(T.self, from: data)
         } catch {
-            throw APIError.decoding(error)
+            let body = String(data: data, encoding: .utf8) ?? ""
+            throw APIError.decoding(error, String(body.prefix(240)))
         }
     }
 }

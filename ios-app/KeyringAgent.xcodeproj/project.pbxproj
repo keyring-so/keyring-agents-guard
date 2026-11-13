@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 54;
+	objectVersion = 60;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -61,7 +61,7 @@
 		CE378E7C114752C37F48F0A0 /* PairAgentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairAgentView.swift; sourceTree = "<group>"; };
 		D58857A5B091DE9D6C347A76 /* Components.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components.swift; sourceTree = "<group>"; };
 		E5199774338319D9B717B1C7 /* Bip39.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bip39.swift; sourceTree = "<group>"; };
-		ECDE14C4DE3C82520CEDA14E /* KeyringAgent.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = KeyringAgent.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		ECDE14C4DE3C82520CEDA14E /* KeyringAgent.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = KeyringAgent.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F6C86AFDAF7412756294AD7B /* NearTx.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NearTx.swift; sourceTree = "<group>"; };
 		F766515D08866A29B70EB3B7 /* Bip39Words.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bip39Words.swift; sourceTree = "<group>"; };
 		F8C44CA16BC37B0C5D618546 /* Data+Hex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Data+Hex.swift"; sourceTree = "<group>"; };
@@ -186,7 +186,6 @@
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					0E3E40A60D7873DB8580A185 = {
-						DevelopmentTeam = "";
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -322,7 +321,7 @@
 				CODE_SIGN_ENTITLEMENTS = KeyringAgent/KeyringAgent.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = VWU226A3V6;
 				INFOPLIST_FILE = KeyringAgent/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -346,7 +345,7 @@
 				CODE_SIGN_ENTITLEMENTS = KeyringAgent/KeyringAgent.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = VWU226A3V6;
 				INFOPLIST_FILE = KeyringAgent/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (

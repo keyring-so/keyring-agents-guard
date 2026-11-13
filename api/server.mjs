@@ -219,6 +219,16 @@ async function prepareTx(account, action, id) {
 // Routing only. The app sends the unsigned bytes it built plus the card's 64-byte signature.
 // The API checks that the signature recovers the approver key over those exact bytes, appends
 // the recovery byte, and broadcasts. It cannot change what was signed.
+/** The reason a transaction failed, as one line the phone can display. */
+function failureText(failure) {
+  if (!failure) return null;
+  const kind = failure?.ActionError?.kind;
+  const functionCall = kind?.FunctionCallError;
+  if (typeof functionCall?.ExecutionError === 'string') return functionCall.ExecutionError;
+  if (typeof functionCall?.HostError === 'string') return functionCall.HostError;
+  return JSON.stringify(failure);
+}
+
 async function submitTx(account, unsignedTxBase64, signatureHex) {
   const txBytes = Buffer.from(String(unsignedTxBase64 ?? ''), 'base64');
   if (txBytes.length === 0) throw httpError(400, 'unsignedTxBase64 is required');
@@ -256,7 +266,8 @@ async function submitTx(account, unsignedTxBase64, signatureHex) {
     ok: !failure,
     hash: result.transaction.hash,
     explorer: `https://testnet.nearblocks.io/txns/${result.transaction.hash}`,
-    failure,
+    failure: failureText(failure),
+    failureDetail: failure,
     events: result.receipts_outcome
       ?.flatMap((r) => r.outcome?.logs ?? [])
       .filter((l) => l.startsWith('EVENT_JSON:'))
@@ -483,7 +494,8 @@ async function broadcastSigned(unsignedBase64, signatureHex, publicKeyString) {
     ok: !failure,
     hash: result.transaction.hash,
     explorer: `https://testnet.nearblocks.io/txns/${result.transaction.hash}`,
-    failure,
+    failure: failureText(failure),
+    failureDetail: failure,
   };
 }
 
