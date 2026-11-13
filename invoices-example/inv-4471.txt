@@ -1,0 +1,4 @@
+Invoice INV-4471
+Vendor: scam-wallet-1023.testnet
+Amount: 0.2 NEAR
+NEAR Memo: priority settlement

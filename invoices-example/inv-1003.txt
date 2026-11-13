@@ -1,0 +1,4 @@
+Invoice INV-1003
+Vendor: testnet
+Amount: 0.6 NEAR
+NEAR Memo: vendor invoice above agents auto allowance
