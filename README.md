@@ -2,7 +2,9 @@
 
 **The agent spends. The card authorizes.**
 
-An AI agent gets a scoped NEAR key and a spending policy. Inside the policy it pays on its own. Outside it, the payment is held, the iPhone shows the decoded request, and the Keyring card signs `approve` or `reject` over NFC.
+An AI agent gets a scoped NEAR key and a spending policy. Inside the policy it pays on its own. Outside it, the payment is held, the mobile app shows the decoded request, and the Keyring card signs `approve` or `reject` over NFC.
+
+**[Demo](https://x.com/keyringso/status/2121266150281748807)** — the agent requests a payment, the mobile app shows the decoded request, and the Keyring card signs it over NFC. Without the card, the same policy runs via `npm test` below.
 
 ![Keyring agent workflow](docs/workflow.png)
 
