@@ -47,7 +47,8 @@ The API is a message bus, not an authority:
 | Path | What |
 |---|---|
 | `contract/` | Rust `near-sdk` shared policy hub; 25 unit tests |
-| `scripts/` | Agent, card, and deploy scripts against testnet |
+| `contract/artifacts/spend_policy.wasm` | Prebuilt wasm so the software-wallet test needs no Rust toolchain |
+| `scripts/` | Software-wallet e2e, agent/card/deploy scripts |
 | `api/` | Multi-user API: pairing, pending queue, unsigned tx preparation, broadcast |
 | `ios-app/` | Native SwiftUI + CoreNFC approval app using the Keyring card |
 | `mcp/` | Keyring MCP server exposed to any MCP agent |
@@ -58,14 +59,52 @@ The API is a message bus, not an authority:
 
 ## Quick start
 
-### Agent onboarding (the product flow)
+### Verify without hardware (software wallet, ~1 minute)
+
+You do **not** need the Keyring card or an iPhone to run the core flow. This uses a local NEAR
+sandbox and software keys; the approver is a local ed25519 key standing in for the card.
+
+```sh
+npm install
+npm test
+```
+
+Expected: `22/22 checks passed`. It deploys the committed wasm, creates accounts, gives the agent a
+function-call key, and verifies:
+
+- inside the policy → paid automatically (no approver)
+- over the per-payment cap → held (`OverTxLimit`)
+- unknown receiver → held (`NotAllowlisted`)
+- the software approver approves one and rejects the other
+- the agent key cannot `approve`, `set_policy`, or transfer NEAR
+- the approver key cannot call `request_spend`
+
+The first run downloads the NEAR sandbox binary (~50 MB). No testnet funds, no private applet repo,
+no Rust toolchain (the wasm is committed at `contract/artifacts/spend_policy.wasm`).
+
+Other checks:
+
+```sh
+npm run test:contract                # 25 contract tests (needs cargo)
+sh ios-app/tests/near-tx/run.sh      # transaction-encoding golden vectors (needs swift)
+```
+
+What this does not cover: NFC/card applet, the iOS UI, and the hosted API. Those are the hardware
+flow below.
+
+### Agent onboarding (the product flow, needs the card)
+
+Reviewers without hardware should use the software-wallet test above; this part needs the Keyring
+card and an iPhone for NFC.
 
 One command installs the capability, pairs the card account, and configures your agent:
 
 ```sh
-npx keyring-agent-skills init
-# from this repo before publishing:
-# npx ./packages/keyring-agent-skills init
+# from this repo (the npm package is not published yet)
+npx ./packages/keyring-agent-skills init
+
+# after publishing:
+# npx keyring-agent-skills init
 ```
 
 It creates the agent's ed25519 key, prints a pairing code, and waits:
@@ -186,6 +225,7 @@ the API verifies it on-chain. The app polls, so the demo works without the notif
 ## Status
 
 - Contract tests: 25/25 passing.
+- Hardware-free software-wallet e2e: `npm test` → 22/22 checks on a local NEAR sandbox.
 - Testnet code hash matches the local wasm for `keyring-policy-1105.testnet`.
 - Reject path verified end-to-end: API prepare → card-format signature → broadcast → `spend_rejected` on testnet.
 - Agent onboarding verified end-to-end with the software card: agent key → pairing code → `AddKey` + `set_agent_key` → CLI config → packaged MCP pays inside the policy.

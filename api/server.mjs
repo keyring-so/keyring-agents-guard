@@ -198,7 +198,7 @@ async function prepareTx(account, action, id) {
   const approverKey = user.keys.approver_key;
   const ak = await rpc('query', {
     request_type: 'view_access_key',
-    finality: 'final',
+    finality: 'optimistic',
     account_id: account,
     public_key: approverKey,
   });

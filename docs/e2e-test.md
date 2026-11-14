@@ -12,6 +12,41 @@ card for a true first-run test, or keep the app installed.
 
 ---
 
+## 0. Software-wallet e2e (no hardware, what an AI reviewer runs)
+
+No card, no iPhone, no testnet funds, no private applet repo:
+
+```sh
+npm install
+npm test
+```
+
+Expected: `22/22 checks passed` in under a minute after the first run. The first run downloads the
+NEAR sandbox binary (~50 MB). The script is `scripts/e2e-software-wallet.mjs`; it uses the committed
+`contract/artifacts/spend_policy.wasm`.
+
+It covers:
+
+- deploy + initialize the shared hub
+- register + deposit
+- inside policy → paid, no approver
+- over the per-payment cap → held `OverTxLimit`
+- unknown receiver → held `NotAllowlisted`
+- software approver approves one, rejects the other
+- agent key cannot `approve`, `set_policy`, or transfer NEAR
+- approver key cannot call `request_spend`
+
+It does not cover the NFC card, the iOS UI, or the hosted API. For those, continue below.
+
+Additional checks:
+
+```sh
+npm run test:contract                # 25 contract tests (needs cargo)
+sh ios-app/tests/near-tx/run.sh      # AddKey/FunctionCall encoding vs the NEAR SDK (needs swift)
+```
+
+---
+
 ## 1. New agent session (5 minutes)
 
 Prerequisites: API running, app installed, card linked, agent paired (see 1b), MCP server configured.

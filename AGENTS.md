@@ -16,7 +16,8 @@ the phone app displays the decoded request. The contract enforces the same limit
 - Setup and host configs: `mcp/README.md`
 - Installer source: `packages/keyring-agent-skills/`
 - Portable skill: `skills/keyring-agent/SKILL.md`
-- Smoke test: `NEAR_ACCOUNT=<card account> node mcp/smoke.mjs`
+- Software-wallet e2e (no card, iPhone, or testnet funds): `npm test`
+- Live-agent smoke test: `NEAR_ACCOUNT=<card account> node mcp/smoke.mjs`
 - Approval UI: `ios-app/` (native iPhone + NFC card)
 
 Hosts prefix MCP tool names: `keyring_request_spend` in OpenCode, `mcp__keyring__request_spend` in

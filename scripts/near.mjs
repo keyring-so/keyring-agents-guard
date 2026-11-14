@@ -28,7 +28,7 @@ export const RPC = process.env.NEAR_RPC ?? 'https://test.rpc.fastnear.com';
 export const APPLETS_DIR = process.env.APPLETS_DIR ?? path.resolve(root, '../near-hackthon-applets');
 export const AGENT_KEY_FILE = path.join(root, '.secrets', 'agent-key.json');
 export const HUB_AGENT_KEY_FILE = process.env.HUB_AGENT_KEY_FILE ?? path.join(root, '.secrets', 'agent-hub-key.json');
-export const WASM = path.join(root, 'contract/target/near/spend_policy.wasm');
+export const WASM = process.env.WASM ?? path.join(root, 'contract', 'artifacts', 'spend_policy.wasm');
 
 const KEY_TYPE = { ED25519: 0, SECP256K1: 1 };
 const hex = (b) => Buffer.from(b).toString('hex');
@@ -115,8 +115,11 @@ export const hubAgent = makeAgent(HUB_AGENT_KEY_FILE);
 export async function sendAt(account, signer, actions, receiver = account) {
   const publicKey = signer.publicKey();
   const ak = await rpc('query', {
-    request_type: 'view_access_key', finality: 'final', account_id: account, public_key: publicKey.toString(),
+    request_type: 'view_access_key', finality: 'optimistic', account_id: account, public_key: publicKey.toString(),
   });
+  if (!ak || ak.error || ak.nonce === undefined) {
+    throw new Error(`${account} has no access key ${publicKey.toString()}${ak?.error ? `: ${ak.error}` : ''}`);
+  }
   const tx = createTransaction(account, publicKey, receiver, BigInt(ak.nonce) + 1n, actions, baseDecode(ak.block_hash));
   const hash = createHash('sha256').update(encodeTransaction(tx)).digest();
   const signed = new SignedTransaction({ transaction: tx, signature: signer.sign(hash, publicKey) });
