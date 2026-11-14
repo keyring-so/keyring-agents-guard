@@ -14,6 +14,11 @@ card for a true first-run test, or keep the app installed.
 
 ## 0. Software-wallet e2e (no hardware, what an AI reviewer runs)
 
+The card is a hardware prototype: the applet and Swift client are private and there is no public
+card distribution. This is therefore the reviewer path. A local ed25519 **software approver**
+stands in for the card; the contract, key scoping, and limits are identical, and only the NFC
+signature is swapped.
+
 No card, no iPhone, no testnet funds, no private applet repo:
 
 ```sh

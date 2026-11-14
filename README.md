@@ -59,6 +59,12 @@ The API is a message bus, not an authority:
 
 ## Quick start
 
+> **Hardware availability.** The Keyring card is a hardware prototype. Its applet and the Swift
+> card client are private, and the card is not publicly distributed. Reviewers can still run the
+> entire policy flow with `npm test`: a local ed25519 **software approver** stands in for the card.
+> The contract, key scoping, and limits are identical; only the NFC signature is swapped. The
+> hardware flow below is documented for completeness and for the demo video.
+
 ### Verify without hardware (software wallet, ~1 minute)
 
 You do **not** need the Keyring card or an iPhone to run the core flow. This uses a local NEAR
@@ -216,6 +222,8 @@ the API verifies it on-chain. The app polls, so the demo works without the notif
 
 ## Known limitations / next
 
+- The card is a prototype: the applet and Swift client are private, and there is no public card
+  distribution. The public reviewer path uses a software approver (`npm test`).
 - Pairing sessions are in memory; an API restart invalidates outstanding codes (re-run `init`).
 - No APNs push yet; the app polls while active and supports deep links (`keyring-agent://approve?...` and `keyring-agent://pair?code=...`). Add universal links and APNs next.
 - The app pins the applet's **test CA** public key. Replace it with the production CA for a production-personalized card.
